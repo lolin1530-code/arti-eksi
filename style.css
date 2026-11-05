@@ -303,3 +303,42 @@ button:disabled {
     font-size: 22px;
   }
 }
+.color-picker-panel {
+  margin-bottom: 16px;
+}
+
+.color-buttons {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.color-choice {
+  flex: 1;
+  min-height: 48px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.color-choice.red {
+  background: #dc4545;
+  color: white;
+}
+
+.color-choice.yellow {
+  background: #e9c343;
+  color: #222;
+}
+
+.color-choice.green {
+  background: #36a66a;
+  color: white;
+}
+
+.color-choice.active {
+  border-color: #fff;
+  outline: 3px solid #536bff;
+  transform: translateY(-2px);
+}
