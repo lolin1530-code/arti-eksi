@@ -1,3 +1,4 @@
+
 let projectUrl = "";
 let apiKey = "";
 let playerToken = "";
@@ -14,7 +15,6 @@ const $ = id => document.getElementById(id);
 
 function setColor(color) {
   $("color").value = color;
-
   document.querySelectorAll(".color-choice").forEach(button => {
     const selected = button.dataset.color === color;
     button.classList.toggle("active", selected);
@@ -110,13 +110,12 @@ async function connect() {
     }
   }
 
-  $("connectionStatus").textContent = "Bağlantı hazır.";
+  $("connectionStatus").textContent = "Supabase bağlantısı hazır.";
 }
 
 async function createRoom() {
   try {
     const result = await rpc("create_room");
-
     playerToken = result.token || result.player_token;
     playerNumber = 1;
     roomCode = result.room_code;
@@ -223,17 +222,39 @@ async function refreshState() {
     const state = await rpc("get_game_state", { p_token: playerToken });
     gameState = state;
 
+    // Oyuncu numarasını Supabase'den al.
+    if (state.player !== undefined && state.player !== null) {
+      playerNumber = Number(state.player);
+      saveSession();
+    }
+
     $("gameRoomInfo").textContent = "Oda kodu: " + (state.room_code || roomCode);
 
     if (state.status === "waiting") {
       $("turn").textContent = "Rakip bekleniyor.";
       $("guessBtn").disabled = true;
+
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
       $("turn").textContent = myTurn ? "Sıra sende!" : "Rakibin sırası.";
       $("guessBtn").disabled = !myTurn || !ownSecret;
+
+    } else if (state.status === "last_chance") {
+      const myTurn = Number(state.turn) === playerNumber;
+      $("turn").textContent = myTurn
+        ? "SON TAHMİNİNİ YAP!"
+        : "Rakibin son tahmin hakkını kullanıyor. Bekle!";
+      $("guessBtn").disabled = !myTurn || !ownSecret;
+
     } else if (state.status === "finished") {
-      $("turn").textContent = Number(state.winner) === playerNumber ? "Kazandın!" : "Rakibin kazandı!";
+      if (state.winner === null || state.winner === undefined) {
+        $("turn").textContent = "BERABERE!";
+      } else if (Number(state.winner) === playerNumber) {
+        $("turn").textContent = "KAZANDIN!";
+      } else {
+        $("turn").textContent = "KAYBETTİN!";
+      }
+
       $("guessBtn").disabled = true;
     }
 
@@ -249,6 +270,7 @@ async function refreshState() {
 
     if (Array.isArray(state.history)) renderOpponentGuesses(state.history);
     renderMyGuesses();
+
   } catch (error) {
     $("turn").textContent = error.message;
   }
@@ -359,7 +381,6 @@ function resetNotes() {
 
   notes.forEach(item => item.marks = {});
   numberMarks = {};
-
   saveNotes();
   renderMyGuesses();
   renderNumberBoard();
