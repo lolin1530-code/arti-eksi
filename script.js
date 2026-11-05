@@ -29,7 +29,6 @@ function saveSession() {
 
 function saveNotes() {
   if (!playerToken) return;
-
   localStorage.setItem("arti_notes_" + playerToken, JSON.stringify(notes));
   localStorage.setItem("arti_marks_" + playerToken, JSON.stringify(numberMarks));
 }
@@ -73,8 +72,7 @@ async function rpc(functionName, body = {}) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": apiKey,
-        "Authorization": "Bearer " + apiKey
+        "apikey": apiKey
       },
       body: JSON.stringify(body)
     }
@@ -83,7 +81,11 @@ async function rpc(functionName, body = {}) {
   const result = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(result?.message || result?.details || "İşlem başarısız.");
+    throw new Error(
+      result?.message ||
+      result?.details ||
+      "Supabase işlemi başarısız. Hata kodu: " + response.status
+    );
   }
 
   return result;
@@ -110,13 +112,16 @@ async function connect() {
     const response = await fetch(projectUrl + "/rest/v1/", {
       method: "GET",
       headers: {
-        "apikey": apiKey,
-        "Authorization": "Bearer " + apiKey
+        "apikey": apiKey
       }
     });
 
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Publishable Key reddedildi. Supabase anahtarını kontrol et.");
+    }
+
     if (!response.ok && response.status !== 404) {
-      throw new Error("Bağlantı kurulamadı. URL ve Key bilgilerini kontrol et.");
+      throw new Error("Supabase bağlantı hatası: " + response.status);
     }
 
     localStorage.setItem("arti_url", projectUrl);
@@ -211,7 +216,7 @@ async function lockSecret() {
     localStorage.setItem("arti_secret_" + playerToken, secret);
 
     $("secret").value = "";
-    $("mySecretDisplay").textContent = "••••";
+    $("mySecretDisplay").textContent = ownSecret;
     $("secret").disabled = true;
     $("lockBtn").disabled = true;
 
@@ -254,6 +259,7 @@ async function submitGuess() {
       "+ " + result.plus + " / - " + result.minus
     );
 
+    renderMyGuesses();
     await refreshState();
   } catch (error) {
     showMessage("feedback", error.message);
@@ -273,15 +279,14 @@ async function refreshState() {
 
     renderOpponentGuesses(state.history || []);
     updateGameDisplay(state);
-
   } catch (error) {
     showMessage("feedback", error.message);
   }
 }
 
 function updateGameDisplay(state) {
-  const status = String(state.status ?? state.game_status ?? "").toLowerCase();
-  const turn = Number(state.turn ?? state.current_turn);
+  const status = String(state.status || "").toLowerCase();
+  const turn = Number(state.turn);
   const winner = state.winner;
   const myTurn = turn === playerNumber;
 
@@ -302,12 +307,10 @@ function updateGameDisplay(state) {
     }
 
     lastStatus = status;
+
     hideResultOverlay();
 
-    showMessage(
-      "turn",
-      myTurn ? "SIRA SENDE!" : "Rakibin sırası."
-    );
+    showMessage("turn", myTurn ? "SIRA SENDE!" : "Rakibin sırası.");
 
     $("guessBtn").disabled = !myTurn || !ownSecret;
     return;
@@ -316,13 +319,15 @@ function updateGameDisplay(state) {
   if (status === "last_chance") {
     lastStatus = status;
 
+    // Son tahmin aşamasında tam ekran pencere açılmaz.
+    // Böylece tahmin kutusu kullanılabilir kalır.
+    hideResultOverlay();
+
     if (myTurn) {
-      showMessage("turn", "SON TAHMİN HAKKI SENDE!");
-      showResultOverlay("SON TAHMİNİNİ YAP!");
+      showMessage("turn", "SON TAHMİNİNİ YAP!");
       $("guessBtn").disabled = !ownSecret;
     } else {
       showMessage("turn", "Rakibin son tahmin hakkını kullanıyor. Bekle!");
-      showResultOverlay("RAKİBİN SON TAHMİN HAKKI!");
       $("guessBtn").disabled = true;
     }
 
@@ -347,6 +352,7 @@ function updateGameDisplay(state) {
     return;
   }
 
+  hideResultOverlay();
   showMessage("turn", "Oyun durumu kontrol ediliyor.");
   $("guessBtn").disabled = true;
 }
@@ -380,8 +386,8 @@ function renderOpponentGuesses(history) {
     result.textContent = " + " + item.plus + " / - " + item.minus;
     result.style.alignSelf = "center";
     result.style.marginLeft = "5px";
-    row.appendChild(result);
 
+    row.appendChild(result);
     container.appendChild(row);
   });
 }
@@ -405,17 +411,19 @@ function renderMyGuesses() {
       span.className = "guess-digit";
 
       const color = numberMarks[index + "_" + digit];
+
       if (color) span.classList.add(color);
 
       span.textContent = digit;
 
       span.addEventListener("click", () => {
         const selected = $("color").value;
+        const key = index + "_" + digit;
 
-        if (numberMarks[index + "_" + digit] === selected) {
-          delete numberMarks[index + "_" + digit];
+        if (numberMarks[key] === selected) {
+          delete numberMarks[key];
         } else {
-          numberMarks[index + "_" + digit] = selected;
+          numberMarks[key] = selected;
         }
 
         saveNotes();
@@ -429,8 +437,8 @@ function renderMyGuesses() {
     result.textContent = " + " + note.plus + " / - " + note.minus;
     result.style.alignSelf = "center";
     result.style.marginLeft = "5px";
-    row.appendChild(result);
 
+    row.appendChild(result);
     container.appendChild(row);
   });
 }
@@ -441,19 +449,22 @@ function renderNumberBoard() {
 
   for (let i = 0; i <= 9; i++) {
     const button = document.createElement("button");
+
     button.className = "digit";
     button.textContent = i;
 
     const color = numberMarks["number_" + i];
+
     if (color) button.classList.add(color);
 
     button.addEventListener("click", () => {
       const selected = $("color").value;
+      const key = "number_" + i;
 
-      if (numberMarks["number_" + i] === selected) {
-        delete numberMarks["number_" + i];
+      if (numberMarks[key] === selected) {
+        delete numberMarks[key];
       } else {
-        numberMarks["number_" + i] = selected;
+        numberMarks[key] = selected;
       }
 
       saveNotes();
@@ -494,7 +505,8 @@ function initializeGame() {
   $("secret").disabled = Boolean(ownSecret);
   $("lockBtn").disabled = Boolean(ownSecret);
 
-  $("mySecretDisplay").textContent = ownSecret ? "••••" : "----";
+  // Kendi sayını gizleme.
+  $("mySecretDisplay").textContent = ownSecret || "----";
 
   renderMyGuesses();
   renderNumberBoard();
@@ -547,6 +559,7 @@ function goBack() {
 
   $("gameScreen").classList.add("hidden");
   $("connectionScreen").classList.remove("hidden");
+
   hideResultOverlay();
 }
 
