@@ -1,344 +1,257 @@
-
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 14px;
-  background: #101522;
-  color: #f4f6ff;
+  padding: 20px;
+  background: #10131c;
+  color: #f1f3f8;
   font-family: Arial, sans-serif;
 }
 
-.app {
+.container {
   width: 100%;
-  max-width: 850px;
+  max-width: 1100px;
   margin: auto;
+}
+
+h1 {
+  text-align: center;
+  color: #ffffff;
+  margin-bottom: 25px;
+}
+
+h2 {
+  font-size: 19px;
+  margin-top: 0;
+}
+
+.panel {
+  background: #1b2030;
+  border: 1px solid #30384c;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  margin: 7px 0 12px;
+  border-radius: 8px;
+  border: 1px solid #414b63;
+  background: #111725;
+  color: white;
+  font-size: 16px;
+}
+
+button {
+  border: none;
+  border-radius: 9px;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+#connectBtn,
+#createRoomBtn,
+#joinRoomBtn,
+#lockBtn,
+#guessBtn,
+#resetNotesBtn {
+  background: #526dff;
+  color: white;
+  margin: 5px 0;
+}
+
+#backBtn {
+  background: #343c50;
+  color: white;
 }
 
 .hidden {
   display: none !important;
 }
 
-h1 {
-  margin: 0;
-  color: #7c9cff;
-  font-size: 30px;
-  letter-spacing: 3px;
-}
-
-h2 {
-  font-size: 17px;
-  margin: 0 0 14px;
-}
-
-p {
-  color: #aab6cc;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.brand {
-  text-align: center;
-  margin: 30px 0;
-}
-
-.panel {
-  background: #1c2537;
-  border: 1px solid #303d55;
-  border-radius: 14px;
-  padding: 15px;
-  margin: 13px 0;
-  min-width: 0;
-}
-
-label {
-  display: block;
-  margin: 12px 0 6px;
-  color: #bdc9dc;
+.hint {
+  color: #aab2c5;
   font-size: 13px;
 }
 
-input, select {
-  width: 100%;
-  min-width: 0;
-  padding: 13px;
-  margin: 6px 0;
-  background: #303c52;
-  color: white;
-  border: 1px solid #53617a;
-  border-radius: 9px;
-  font-size: 16px;
-}
-
-input::placeholder {
-  color: #9aa8bd;
-}
-
-button {
-  border: 0;
-  border-radius: 9px;
-  padding: 13px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-button:disabled {
-  opacity: 0.4;
-}
-
-.full {
-  width: 100%;
+#connectionStatus,
+#roomStatus,
+#secretStatus,
+#feedback {
+  color: #aebcff;
   margin-top: 10px;
 }
 
-.primary {
-  background: #6689ff;
-  color: white;
-}
+/* Renk seçme alanı */
 
-.secondary {
-  background: #269b70;
-  color: white;
-}
-
-.small-button {
-  background: #344158;
-  color: white;
-}
-
-.separator {
-  text-align: center;
-  color: #8190a8;
-  font-size: 11px;
-  margin: 18px 0;
-}
-
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 18px;
-}
-
-.game-header h1 {
-  font-size: 25px;
-}
-
-.game-status {
-  text-align: center;
-  border-color: #536da9;
-}
-
-.game-status h2 {
-  color: #a9c0ff;
-}
-
-.player-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  align-items: stretch;
-}
-
-.player-panel {
-  min-width: 0;
-  padding: 12px;
-}
-
-.player-panel h2 {
-  min-height: 36px;
-  font-size: 15px;
-  line-height: 1.3;
-}
-
-.guess-heading {
-  color: #a9c0ff;
-  font-size: 12px;
-  font-weight: bold;
-  margin: 12px 0 8px;
-}
-
-.opponent-heading {
-  margin-top: 20px;
-}
-
-.secret-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 57px;
-  border-radius: 9px;
-  background: #303c52;
-  color: white;
-  font-size: 27px;
-  font-weight: bold;
-  letter-spacing: 5px;
-}
-
-.guess-list {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  min-width: 0;
-}
-
-.guess-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.guess-row .digit {
-  width: 100%;
-  min-width: 0;
-  height: 39px;
-  padding: 0;
-  margin: 0;
-  font-size: 16px;
-}
-
-.digit {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #344158;
-  color: white;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
-.red {
-  background: #d94c58 !important;
-}
-
-.green {
-  background: #269b70 !important;
-}
-
-.yellow {
-  background: #c99a32 !important;
-}
-
-.digits {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 9px;
-  margin: 15px 0;
-}
-
-.digits .digit {
-  height: 48px;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  font-size: 19px;
-}
-
-.hint {
-  font-size: 12px;
-  color: #9baac1;
-}
-
-#feedback {
-  margin-top: 12px;
-  font-weight: bold;
-  color: #a9c0ff;
-}
-
-.reset-button {
-  background: #39465d;
-  color: white;
-}
-
-@media (max-width: 480px) {
-  body {
-    padding: 8px;
-  }
-
-  .panel {
-    padding: 11px;
-    margin: 9px 0;
-  }
-
-  .player-columns {
-    gap: 7px;
-  }
-
-  .player-panel {
-    padding: 9px;
-  }
-
-  .player-panel h2 {
-    font-size: 13px;
-  }
-
-  .secret-display {
-    font-size: 23px;
-    letter-spacing: 3px;
-  }
-
-  .guess-row {
-    gap: 3px;
-  }
-
-  .guess-row .digit {
-    height: 35px;
-    font-size: 14px;
-  }
-
-  .digits {
-    gap: 7px;
-  }
-
-  .digits .digit {
-    height: 44px;
-  }
-
-  .game-header h1 {
-    font-size: 22px;
-  }
-}
 .color-picker-panel {
-  margin-bottom: 16px;
+  width: 100%;
 }
 
 .color-buttons {
   display: flex;
-  gap: 10px;
   width: 100%;
+  gap: 10px;
 }
 
 .color-choice {
   flex: 1;
-  min-height: 48px;
-  border: 2px solid transparent;
-  border-radius: 10px;
+  min-width: 0;
+  min-height: 75px;
+  font-size: 17px;
+  font-weight: 900;
+  color: white;
+  border: 3px solid transparent;
+  border-radius: 12px;
+}
+
+.color-choice.red {
+  background: #d93645;
+}
+
+.color-choice.yellow {
+  background: #d6a91e;
+  color: #171717;
+}
+
+.color-choice.green {
+  background: #169b62;
+}
+
+.color-choice.active {
+  border: 4px solid white;
+  box-shadow: 0 0 12px #ffffff55;
+}
+
+#color {
+  display: none;
+}
+
+/* Oyuncu alanları */
+
+.player-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.player-columns .panel {
+  min-width: 0;
+}
+
+.guess-row {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.guess-digit {
+  flex: 1;
+  min-width: 0;
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #30394d;
+  border-radius: 7px;
+  font-size: 20px;
   font-weight: bold;
   cursor: pointer;
 }
 
-.color-choice.red {
-  background: #dc4545;
+.guess-digit.red,
+.digit.red {
+  background: #d93645;
   color: white;
 }
 
-.color-choice.yellow {
-  background: #e9c343;
-  color: #222;
-}
-
-.color-choice.green {
-  background: #36a66a;
+.guess-digit.green,
+.digit.green {
+  background: #169b62;
   color: white;
 }
 
-.color-choice.active {
-  border-color: #fff;
-  outline: 3px solid #536bff;
-  transform: translateY(-2px);
+.guess-digit.yellow,
+.digit.yellow {
+  background: #d6a91e;
+  color: #171717;
+}
+
+.secret-display {
+  display: flex;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.secret-display span {
+  flex: 1;
+  padding: 12px 5px;
+  text-align: center;
+  background: #30394d;
+  border-radius: 8px;
+  font-size: 21px;
+  font-weight: bold;
+}
+
+#guess {
+  margin-top: 12px;
+}
+
+/* 0-9 rakam tahtası */
+
+.number-board,
+#numberBoard {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.digit {
+  min-height: 65px;
+  background: #30394d;
+  color: white;
+  border-radius: 10px;
+  font-size: 23px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#myGuesses,
+#opponentGuesses {
+  min-height: 60px;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+
+  .panel {
+    padding: 13px;
+  }
+
+  .player-columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .color-choice {
+    min-height: 68px;
+    font-size: 13px;
+  }
+
+  .digit {
+    min-height: 55px;
+  }
 }
