@@ -29,6 +29,7 @@ function saveSession() {
 
 function saveNotes() {
   if (!playerToken) return;
+
   localStorage.setItem("arti_notes_" + playerToken, JSON.stringify(notes));
   localStorage.setItem("arti_marks_" + playerToken, JSON.stringify(numberMarks));
 }
@@ -247,9 +248,10 @@ async function submitGuess() {
     saveNotes();
 
     $("guess").value = "";
+
     showMessage(
       "feedback",
-      "+ " + result.plus + "  /  - " + result.minus
+      "+ " + result.plus + " / - " + result.minus
     );
 
     await refreshState();
@@ -278,13 +280,17 @@ async function refreshState() {
 }
 
 function updateGameDisplay(state) {
-  const status = state.status;
-  const myTurn = Number(state.turn) === playerNumber;
+  const status = String(state.status ?? state.game_status ?? "").toLowerCase();
+  const turn = Number(state.turn ?? state.current_turn);
+  const winner = state.winner;
+  const myTurn = turn === playerNumber;
 
   if (status === "waiting") {
     lastStatus = status;
+
     showMessage("turn", "Rakip bekleniyor.");
     showMessage("coin", "İki oyuncu da sayısını kilitleyince oyun başlayacak.");
+
     hideResultOverlay();
     $("guessBtn").disabled = true;
     return;
@@ -309,14 +315,15 @@ function updateGameDisplay(state) {
 
   if (status === "last_chance") {
     lastStatus = status;
-    $("guessBtn").disabled = !myTurn || !ownSecret;
 
     if (myTurn) {
-      showMessage("turn", "Son tahmin hakkı sende!");
+      showMessage("turn", "SON TAHMİN HAKKI SENDE!");
       showResultOverlay("SON TAHMİNİNİ YAP!");
+      $("guessBtn").disabled = !ownSecret;
     } else {
-      showMessage("turn", "Rakibin son tahmin hakkını kullanıyor.");
-      showResultOverlay("Rakibin son tahmin hakkını kullanıyor. Bekle!");
+      showMessage("turn", "Rakibin son tahmin hakkını kullanıyor. Bekle!");
+      showResultOverlay("RAKİBİN SON TAHMİN HAKKI!");
+      $("guessBtn").disabled = true;
     }
 
     return;
@@ -326,17 +333,22 @@ function updateGameDisplay(state) {
     lastStatus = status;
     $("guessBtn").disabled = true;
 
-    if (state.winner == null) {
+    if (winner == null) {
       showMessage("turn", "Oyun berabere bitti!");
       showResultOverlay("BERABERE!");
-    } else if (Number(state.winner) === playerNumber) {
+    } else if (Number(winner) === playerNumber) {
       showMessage("turn", "Oyunu kazandın!");
       showResultOverlay("KAZANDIN!");
     } else {
       showMessage("turn", "Oyunu kaybettin.");
       showResultOverlay("KAYBETTİN!");
     }
+
+    return;
   }
+
+  showMessage("turn", "Oyun durumu kontrol ediliyor.");
+  $("guessBtn").disabled = true;
 }
 
 function renderOpponentGuesses(history) {
@@ -365,7 +377,7 @@ function renderOpponentGuesses(history) {
     }
 
     const result = document.createElement("span");
-    result.textContent = "  + " + item.plus + " / - " + item.minus;
+    result.textContent = " + " + item.plus + " / - " + item.minus;
     result.style.alignSelf = "center";
     result.style.marginLeft = "5px";
     row.appendChild(result);
@@ -414,7 +426,7 @@ function renderMyGuesses() {
     }
 
     const result = document.createElement("span");
-    result.textContent = "  + " + note.plus + " / - " + note.minus;
+    result.textContent = " + " + note.plus + " / - " + note.minus;
     result.style.alignSelf = "center";
     result.style.marginLeft = "5px";
     row.appendChild(result);
@@ -475,7 +487,7 @@ function startPolling() {
 
   pollTimer = setInterval(() => {
     refreshState();
-  }, 2000);
+  }, 1500);
 }
 
 function initializeGame() {
