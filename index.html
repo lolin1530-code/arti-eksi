@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -7,139 +8,97 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <main class="container">
+    <h1>ARTI EKSİ</h1>
 
-<div class="app">
-
-  <section id="connectionScreen">
-    <header class="brand">
-      <h1>ARTI EKSİ</h1>
-      <p>4 rakamlı gizli sayı oyunu</p>
-    </header>
-
-    <div class="panel">
-      <h2>Supabase Bağlantısı</h2>
-      <label>Project URL</label>
-      <input id="projectUrl" placeholder="https://....supabase.co">
-
-      <label>Publishable Key</label>
-      <input id="apiKey" placeholder="sb_publishable_...">
-
-      <button id="connectBtn" class="primary full">Bağlan</button>
-      <p id="connectionStatus">Bağlantı bekleniyor.</p>
-    </div>
-
-    <div class="panel">
-      <h2>Oyun Odası</h2>
-      <button id="createRoomBtn" class="primary full">Yeni Oda Oluştur</button>
-
-      <div class="separator">VEYA</div>
-
-      <label>Oda Kodu</label>
-      <input id="roomCode" placeholder="Arkadaşının oda kodu">
-
-      <button id="joinRoomBtn" class="secondary full">Odaya Katıl</button>
-      <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
-    </div>
-  </section>
-
-  <section id="gameScreen" class="hidden">
-
-    <header class="game-header">
-      <div>
-        <h1>ARTI EKSİ</h1>
-        <p id="gameRoomInfo">Oda bilgisi</p>
-      </div>
-      <button id="backBtn" class="small-button">Çıkış</button>
-    </header>
-
-    <div class="panel game-status">
-      <p id="coin">Yazı-tura bekleniyor...</p>
-      <h2 id="turn">Oyun bekleniyor.</h2>
-    </div>
-
-    <div class="panel" id="secretPanel">
-      <h2>Gizli Sayını Belirle</h2>
-      <p>Dört farklı rakam seç. İlk rakam sıfır olamaz.</p>
-
-      <input id="secret" maxlength="4"
-        inputmode="numeric" placeholder="Örn. 8041">
-
-      <button id="lockBtn" class="primary full">
-        Sayımı Kilitle
-      </button>
-
-      <p id="secretStatus"></p>
-    </div>
-
-    <div class="panel color-picker-panel">
-      <h2>İşaretleme Rengi</h2>
-
-      <div class="color-buttons">
-        <button type="button" class="color-choice red active"
-          data-color="red">KIRMIZI</button>
-
-        <button type="button" class="color-choice yellow"
-          data-color="yellow">SARI</button>
-
-        <button type="button" class="color-choice green"
-          data-color="green">YEŞİL</button>
+    <section id="connectionScreen">
+      <div class="panel">
+        <h2>Supabase Bağlantısı</h2>
+        <label for="projectUrl">Project URL</label>
+        <input id="projectUrl" type="url" placeholder="https://....supabase.co">
+        <label for="apiKey">Publishable Key</label>
+        <input id="apiKey" type="password" placeholder="sb_publishable_...">
+        <button id="connectBtn" type="button">Bağlan</button>
+        <p id="connectionStatus">Bağlantı bekleniyor.</p>
       </div>
 
-      <input type="hidden" id="color" value="red">
+      <div class="panel">
+        <h2>Oyun Odası</h2>
+        <button id="createRoomBtn" type="button">Yeni Oda Oluştur</button>
+        <p class="hint">VEYA</p>
+        <label for="roomCode">Oda Kodu</label>
+        <input id="roomCode" type="text" maxlength="6" placeholder="Arkadaşının oda kodu">
+        <button id="joinRoomBtn" type="button">Odaya Katıl</button>
+        <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
+      </div>
+    </section>
 
-      <p class="hint">
-        Tahminlerindeki rakamları tek tek işaretleyebilirsin.
-      </p>
-    </div>
-
-    <div class="player-columns">
-
-      <div class="panel player-panel">
-        <h2>Benim Tahminlerim</h2>
-        <div class="guess-heading">Tahminlerim</div>
-        <div id="myGuesses" class="guess-list"></div>
+    <section id="gameScreen" class="hidden">
+      <div class="panel game-header">
+        <div id="gameRoomInfo">Oda kodu:</div>
+        <button id="backBtn" type="button">Bağlantı ekranına dön</button>
       </div>
 
-      <div class="panel player-panel">
-        <h2>Benim Sayım</h2>
-        <div id="mySecretDisplay" class="secret-display">----</div>
+      <div class="panel">
+        <div id="coin">İki oyuncu da sayısını kilitleyince oyun başlayacak.</div>
+        <h2 id="turn">Rakip bekleniyor.</h2>
+      </div>
 
-        <div class="guess-heading opponent-heading">
-          Rakibin Tahminleri
+      <div class="panel" id="secretPanel">
+        <h2>Gizli Sayın</h2>
+        <p class="hint">İlk rakam sıfır olmayan, dört farklı rakamdan oluşan sayını belirle.</p>
+        <input id="secret" type="password" inputmode="numeric" maxlength="4" placeholder="Örn. 5831">
+        <button id="lockBtn" type="button">Sayımı Kilitle</button>
+        <p id="secretStatus">Sayını henüz kilitlemedin.</p>
+        <div class="secret-display">
+          <span id="mySecretDisplay">----</span>
         </div>
-
-        <div id="opponentGuesses" class="guess-list"></div>
       </div>
 
+      <div class="panel color-picker-panel">
+        <h2>İşaretleme Rengi</h2>
+        <div class="color-buttons">
+          <button type="button" class="color-choice red active" data-color="red">KIRMIZI</button>
+          <button type="button" class="color-choice yellow" data-color="yellow">SARI</button>
+          <button type="button" class="color-choice green" data-color="green">YEŞİL</button>
+        </div>
+        <input type="hidden" id="color" value="red">
+        <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
+      </div>
+
+      <div class="player-columns">
+        <div class="panel">
+          <h2>Kendi Tahminlerin</h2>
+          <div id="myGuesses">Henüz tahmin yok.</div>
+        </div>
+        <div class="panel">
+          <h2>Rakibin Tahminleri</h2>
+          <div id="opponentGuesses">Henüz tahmin yok.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tahmin Yap</h2>
+        <input id="guess" type="text" inputmode="numeric" maxlength="4" placeholder="4 farklı rakam">
+        <button id="guessBtn" type="button" disabled>Tahmin Et</button>
+        <p id="feedback">Sıra sana geldiğinde tahmin yapabilirsin.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Rakam Tahtası</h2>
+        <div id="numberBoard" class="number-board"></div>
+        <button id="resetNotesBtn" type="button">Kişisel Notları Sıfırla</button>
+        <p class="hint">Kişisel notları sıfırlamak tahmin geçmişini silmez.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="resultOverlay" class="result-overlay hidden" role="alert" aria-live="assertive">
+    <div class="result-card">
+      <div id="resultOverlayText">KAZANDIN!</div>
     </div>
+  </div>
 
-    <div class="panel">
-      <h2>Tahmin Yap</h2>
-
-      <input id="guess" maxlength="4"
-        inputmode="numeric" placeholder="4 farklı rakam">
-
-      <button id="guessBtn" class="primary full" disabled>
-        Tahmin Et
-      </button>
-
-      <div id="feedback"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Kişisel Rakam Tahtası</h2>
-      <p class="hint">Kırmızı: Yok · Yeşil: Doğru konum</p>
-
-      <div id="numberBoard" class="digits"></div>
-
-      <button id="resetNotesBtn" class="reset-button full">
-        Kişisel Notları Sıfırla
-      </button>
-    </div>
-
-  </section>
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
