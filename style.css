@@ -307,3 +307,6 @@ button:active {
     padding: 30px 14px;
   }
 }
+.guess-digit {
+  color: white !important;
+}
