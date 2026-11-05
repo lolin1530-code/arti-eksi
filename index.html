@@ -50,15 +50,21 @@
       <p id="coin">Yazı-tura bekleniyor...</p>
       <h2 id="turn">Oyun bekleniyor.</h2>
     </div>
-
-    <div class="panel" id="secretPanel">
-      <h2>Gizli Sayını Belirle</h2>
-      <p>Dört farklı rakam seç. İlk rakam sıfır olamaz.</p>
-      <input id="secret" maxlength="4" inputmode="numeric" placeholder="Örn. 5831">
-      <button id="lockBtn" class="primary full">Sayımı Kilitle</button>
-      <p id="secretStatus"></p>
-    </div>
-
+ 
+<div class="panel color-picker-panel">
+  <h2>İşaretleme Rengi</h2>
+  <div class="color-buttons">
+    <button type="button" class="color-choice red active" data-color="red">Kırmızı</button>
+    <button type="button" class="color-choice yellow" data-color="yellow">Sarı</button>
+    <button type="button" class="color-choice green" data-color="green">Yeşil</button>
+  </div>
+  <select id="color" hidden>
+    <option value="red">Kırmızı</option>
+    <option value="yellow">Sarı</option>
+    <option value="green">Yeşil</option>
+  </select>
+  <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
+</div>
     <div class="player-columns">
       <div class="panel player-panel">
         <h2>Benim Tahminlerim</h2>
