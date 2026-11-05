@@ -1,4 +1,3 @@
-
 let projectUrl = "";
 let apiKey = "";
 let playerToken = "";
@@ -11,7 +10,18 @@ let numberMarks = {};
 let gameState = null;
 let ownSecret = "";
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
+
+function setColor(color) {
+  $("color").value = color;
+
+  document.querySelectorAll(".color-choice").forEach(button => {
+    const selected = button.dataset.color === color;
+    button.classList.toggle("active", selected);
+    button.style.outline = selected ? "4px solid white" : "none";
+    button.style.filter = selected ? "brightness(1.15)" : "brightness(0.8)";
+  });
+}
 
 function saveSession() {
   localStorage.setItem("arti_session", JSON.stringify({
@@ -40,6 +50,9 @@ function saveOwnSecret() {
 
 function loadOwnSecret() {
   ownSecret = localStorage.getItem("arti_secret_" + playerToken) || "";
+  $("secret").value = ownSecret;
+  $("secret").disabled = !!ownSecret;
+  $("lockBtn").disabled = !!ownSecret;
   renderOwnSecret();
 }
 
@@ -87,7 +100,9 @@ async function connect() {
   localStorage.setItem("arti_key", apiKey);
 
   try {
-    await rpc("get_game_state", { p_token: "00000000-0000-0000-0000-000000000000" });
+    await rpc("get_game_state", {
+      p_token: "00000000-0000-0000-0000-000000000000"
+    });
   } catch (error) {
     if (error.message.includes("Failed to fetch")) {
       $("connectionStatus").textContent = "Sunucuya ulaşılamadı.";
@@ -117,6 +132,7 @@ async function createRoom() {
     loadOwnSecret();
     showGameScreen();
     startPolling();
+
     $("roomStatus").textContent = "Oda oluşturuldu: " + roomCode;
   } catch (error) {
     $("roomStatus").textContent = error.message;
@@ -145,6 +161,7 @@ async function joinRoom() {
     loadOwnSecret();
     showGameScreen();
     startPolling();
+
     $("roomStatus").textContent = "Odaya katıldın.";
   } catch (error) {
     $("roomStatus").textContent = error.message;
@@ -210,15 +227,19 @@ async function refreshState() {
 
     if (state.status === "waiting") {
       $("turn").textContent = "Rakip bekleniyor.";
+      $("guessBtn").disabled = true;
     } else if (state.status === "playing") {
-      $("turn").textContent = Number(state.turn) === playerNumber ? "Sıra sende!" : "Rakibin sırası.";
-      $("guessBtn").disabled = Number(state.turn) !== playerNumber || !ownSecret;
+      const myTurn = Number(state.turn) === playerNumber;
+      $("turn").textContent = myTurn ? "Sıra sende!" : "Rakibin sırası.";
+      $("guessBtn").disabled = !myTurn || !ownSecret;
     } else if (state.status === "finished") {
       $("turn").textContent = Number(state.winner) === playerNumber ? "Kazandın!" : "Rakibin kazandı!";
       $("guessBtn").disabled = true;
     }
 
-    if (state.opponent_locked) $("coin").textContent = "İki oyuncu da sayısını kilitledi.";
+    if (state.opponent_locked) {
+      $("coin").textContent = "İki oyuncu da sayısını kilitledi.";
+    }
 
     if (state.status === "playing" && lastStatus !== "playing") {
       $("coin").textContent = "🪙 Oyuna başlayan: Oyuncu " + state.turn;
@@ -247,7 +268,7 @@ function renderOpponentGuesses(history) {
 
     for (const digit of item.guess) {
       const cell = document.createElement("div");
-      cell.className = "digit";
+      cell.className = "guess-digit";
       cell.textContent = digit;
       row.appendChild(cell);
     }
@@ -272,7 +293,7 @@ function renderMyGuesses() {
 
     for (let i = 0; i < 4; i++) {
       const cell = document.createElement("button");
-      cell.className = "digit";
+      cell.className = "guess-digit";
 
       const mark = item.marks && item.marks[i];
       if (mark) cell.classList.add(mark);
@@ -336,8 +357,9 @@ function renderNumberBoard() {
 function resetNotes() {
   if (!confirm("Bütün kişisel işaretlemelerin silinsin mi?")) return;
 
-  notes = [];
+  notes.forEach(item => item.marks = {});
   numberMarks = {};
+
   saveNotes();
   renderMyGuesses();
   renderNumberBoard();
@@ -389,20 +411,20 @@ function initializeGame() {
   $("lockBtn").addEventListener("click", lockSecret);
   $("guessBtn").addEventListener("click", submitGuess);
   $("resetNotesBtn").addEventListener("click", resetNotes);
-document.querySelectorAll(".color-choice").forEach(button => {
-  button.addEventListener("click", () => {
-    const color = button.dataset.color;
-    $("color").value = color;
 
-    document.querySelectorAll(".color-choice").forEach(item => {
-      item.classList.remove("active");
+  document.querySelectorAll(".color-choice").forEach(button => {
+    button.addEventListener("click", () => {
+      setColor(button.dataset.color);
     });
-
-    button.classList.add("active");
   });
-});
+
+  setColor("red");
+
   $("backBtn").addEventListener("click", () => {
-    if (pollTimer) clearInterval(pollTimer);
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
     showConnectionScreen();
   });
 
