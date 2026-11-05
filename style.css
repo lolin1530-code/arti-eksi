@@ -1,3 +1,4 @@
+
 * {
   box-sizing: border-box;
 }
@@ -55,6 +56,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 button:active {
   transform: scale(0.98);
 }
@@ -92,8 +98,22 @@ button:active {
   margin-top: 10px;
 }
 
-/* Renk seçme alanı */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
+#coin {
+  text-align: center;
+  color: #aebcff;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+/* Renk seçme alanı */
 .color-picker-panel {
   width: 100%;
 }
@@ -138,7 +158,6 @@ button:active {
 }
 
 /* Oyuncu alanları */
-
 .player-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -208,7 +227,6 @@ button:active {
 }
 
 /* 0-9 rakam tahtası */
-
 .number-board,
 #numberBoard {
   display: grid;
@@ -232,6 +250,36 @@ button:active {
   min-height: 60px;
 }
 
+/* Sonuç ve son tahmin ekranı */
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5, 8, 15, 0.88);
+}
+
+.result-card {
+  width: min(92vw, 650px);
+  padding: 38px 22px;
+  border: 2px solid #7185ff;
+  border-radius: 22px;
+  background: #1b2030;
+  box-shadow: 0 0 45px #526dff55;
+  text-align: center;
+}
+
+#resultOverlayText {
+  color: #ffffff;
+  font-size: clamp(30px, 8vw, 64px);
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
 @media (max-width: 600px) {
   body {
     padding: 10px;
@@ -253,5 +301,9 @@ button:active {
 
   .digit {
     min-height: 55px;
+  }
+
+  .result-card {
+    padding: 30px 14px;
   }
 }
