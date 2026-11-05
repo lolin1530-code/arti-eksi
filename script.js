@@ -389,7 +389,18 @@ function initializeGame() {
   $("lockBtn").addEventListener("click", lockSecret);
   $("guessBtn").addEventListener("click", submitGuess);
   $("resetNotesBtn").addEventListener("click", resetNotes);
+document.querySelectorAll(".color-choice").forEach(button => {
+  button.addEventListener("click", () => {
+    const color = button.dataset.color;
+    $("color").value = color;
 
+    document.querySelectorAll(".color-choice").forEach(item => {
+      item.classList.remove("active");
+    });
+
+    button.classList.add("active");
+  });
+});
   $("backBtn").addEventListener("click", () => {
     if (pollTimer) clearInterval(pollTimer);
     showConnectionScreen();
