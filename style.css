@@ -310,3 +310,8 @@ button:active {
 .guess-digit {
   color: white !important;
 }
+#myGuesses .guess-digit,
+#opponentGuesses .guess-digit {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
