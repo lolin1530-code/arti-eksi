@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -10,6 +9,7 @@
 <body>
 
 <div class="app">
+
   <section id="connectionScreen">
     <header class="brand">
       <h1>ARTI EKSİ</h1>
@@ -20,8 +20,10 @@
       <h2>Supabase Bağlantısı</h2>
       <label>Project URL</label>
       <input id="projectUrl" placeholder="https://....supabase.co">
+
       <label>Publishable Key</label>
       <input id="apiKey" placeholder="sb_publishable_...">
+
       <button id="connectBtn" class="primary full">Bağlan</button>
       <p id="connectionStatus">Bağlantı bekleniyor.</p>
     </div>
@@ -29,15 +31,19 @@
     <div class="panel">
       <h2>Oyun Odası</h2>
       <button id="createRoomBtn" class="primary full">Yeni Oda Oluştur</button>
+
       <div class="separator">VEYA</div>
+
       <label>Oda Kodu</label>
       <input id="roomCode" placeholder="Arkadaşının oda kodu">
+
       <button id="joinRoomBtn" class="secondary full">Odaya Katıl</button>
       <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
     </div>
   </section>
 
   <section id="gameScreen" class="hidden">
+
     <header class="game-header">
       <div>
         <h1>ARTI EKSİ</h1>
@@ -50,22 +56,44 @@
       <p id="coin">Yazı-tura bekleniyor...</p>
       <h2 id="turn">Oyun bekleniyor.</h2>
     </div>
- 
-<div class="panel color-picker-panel">
-  <h2>İşaretleme Rengi</h2>
-  <div class="color-buttons">
-    <button type="button" class="color-choice red active" data-color="red">Kırmızı</button>
-    <button type="button" class="color-choice yellow" data-color="yellow">Sarı</button>
-    <button type="button" class="color-choice green" data-color="green">Yeşil</button>
-  </div>
-  <select id="color" hidden>
-    <option value="red">Kırmızı</option>
-    <option value="yellow">Sarı</option>
-    <option value="green">Yeşil</option>
-  </select>
-  <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
-</div>
+
+    <div class="panel" id="secretPanel">
+      <h2>Gizli Sayını Belirle</h2>
+      <p>Dört farklı rakam seç. İlk rakam sıfır olamaz.</p>
+
+      <input id="secret" maxlength="4"
+        inputmode="numeric" placeholder="Örn. 8041">
+
+      <button id="lockBtn" class="primary full">
+        Sayımı Kilitle
+      </button>
+
+      <p id="secretStatus"></p>
+    </div>
+
+    <div class="panel color-picker-panel">
+      <h2>İşaretleme Rengi</h2>
+
+      <div class="color-buttons">
+        <button type="button" class="color-choice red active"
+          data-color="red">KIRMIZI</button>
+
+        <button type="button" class="color-choice yellow"
+          data-color="yellow">SARI</button>
+
+        <button type="button" class="color-choice green"
+          data-color="green">YEŞİL</button>
+      </div>
+
+      <input type="hidden" id="color" value="red">
+
+      <p class="hint">
+        Tahminlerindeki rakamları tek tek işaretleyebilirsin.
+      </p>
+    </div>
+
     <div class="player-columns">
+
       <div class="panel player-panel">
         <h2>Benim Tahminlerim</h2>
         <div class="guess-heading">Tahminlerim</div>
@@ -75,34 +103,40 @@
       <div class="panel player-panel">
         <h2>Benim Sayım</h2>
         <div id="mySecretDisplay" class="secret-display">----</div>
-        <div class="guess-heading opponent-heading">Rakibin Tahminleri</div>
+
+        <div class="guess-heading opponent-heading">
+          Rakibin Tahminleri
+        </div>
+
         <div id="opponentGuesses" class="guess-list"></div>
       </div>
+
     </div>
 
     <div class="panel">
       <h2>Tahmin Yap</h2>
-      <input id="guess" maxlength="4" inputmode="numeric" placeholder="4 farklı rakam">
-      <button id="guessBtn" class="primary full" disabled>Tahmin Et</button>
-      <div id="feedback"></div>
-    </div>
 
-    <div class="panel">
-      <h2>İşaretleme Rengi</h2>
-      <select id="color">
-        <option value="red">🔴 Kırmızı</option>
-        <option value="green">🟢 Yeşil</option>
-        <option value="yellow">🟡 Sarı</option>
-      </select>
-      <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
+      <input id="guess" maxlength="4"
+        inputmode="numeric" placeholder="4 farklı rakam">
+
+      <button id="guessBtn" class="primary full" disabled>
+        Tahmin Et
+      </button>
+
+      <div id="feedback"></div>
     </div>
 
     <div class="panel">
       <h2>Kişisel Rakam Tahtası</h2>
       <p class="hint">Kırmızı: Yok · Yeşil: Doğru konum</p>
+
       <div id="numberBoard" class="digits"></div>
-      <button id="resetNotesBtn" class="reset-button full">Kişisel Notları Sıfırla</button>
+
+      <button id="resetNotesBtn" class="reset-button full">
+        Kişisel Notları Sıfırla
+      </button>
     </div>
+
   </section>
 </div>
 
