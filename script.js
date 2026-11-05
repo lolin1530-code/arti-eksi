@@ -14,21 +14,21 @@ let ownSecret = "";
 const $ = (id) => document.getElementById(id);
 
 function saveSession() {
-  const session = {
+  localStorage.setItem("arti_session", JSON.stringify({
     projectUrl,
     apiKey,
     playerToken,
     playerNumber,
     roomCode
-  };
+  }));
 
-  localStorage.setItem("arti_session", JSON.stringify(session));
   localStorage.setItem("arti_url", projectUrl);
   localStorage.setItem("arti_key", apiKey);
 }
 
 function saveNotes() {
   if (!playerToken) return;
+
   localStorage.setItem("arti_notes_" + playerToken, JSON.stringify(notes));
   localStorage.setItem("arti_marks_" + playerToken, JSON.stringify(numberMarks));
 }
@@ -84,7 +84,7 @@ async function rpc(functionName, body = {}) {
     throw new Error(
       result?.message ||
       result?.details ||
-      "Supabase işlemi başarısız. Hata kodu: " + response.status
+      "Supabase hatası: " + response.status
     );
   }
 
@@ -101,27 +101,54 @@ async function connect() {
   }
 
   if (!url.startsWith("https://") || !url.includes(".supabase.co")) {
-    showMessage("connectionStatus", "Project URL hatalı görünüyor.");
+    showMessage("connectionStatus", "Project URL hatalı.");
     return;
   }
 
   projectUrl = url;
   apiKey = key;
 
+  showMessage("connectionStatus", "Bağlantı kontrol ediliyor...");
+
   try {
-    const response = await fetch(projectUrl + "/rest/v1/", {
-      method: "GET",
-      headers: {
-        "apikey": apiKey
+    const response = await fetch(
+      projectUrl + "/rest/v1/rpc/get_game_state",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": apiKey
+        },
+        body: JSON.stringify({
+          p_token: "00000000-0000-0000-0000-000000000000"
+        })
       }
-    });
+    );
+
+    const result = await response.json().catch(() => null);
 
     if (response.status === 401 || response.status === 403) {
-      throw new Error("Publishable Key reddedildi. Supabase anahtarını kontrol et.");
+      throw new Error(
+        result?.message ||
+        result?.msg ||
+        "API anahtarı reddedildi. Anahtar türünü kontrol et."
+      );
     }
 
-    if (!response.ok && response.status !== 404) {
-      throw new Error("Supabase bağlantı hatası: " + response.status);
+    if (response.status === 404) {
+      throw new Error("get_game_state fonksiyonu bulunamadı.");
+    }
+
+    // Geçersiz test token'ı nedeniyle 400 beklenebilir.
+    if (response.status === 400) {
+      localStorage.setItem("arti_url", projectUrl);
+      localStorage.setItem("arti_key", apiKey);
+      showMessage("connectionStatus", "Supabase bağlantısı hazır.");
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(result?.message || "Hata kodu: " + response.status);
     }
 
     localStorage.setItem("arti_url", projectUrl);
@@ -213,6 +240,7 @@ async function lockSecret() {
     });
 
     ownSecret = secret;
+
     localStorage.setItem("arti_secret_" + playerToken, secret);
 
     $("secret").value = "";
@@ -293,10 +321,11 @@ function updateGameDisplay(state) {
   if (status === "waiting") {
     lastStatus = status;
 
+    hideResultOverlay();
+
     showMessage("turn", "Rakip bekleniyor.");
     showMessage("coin", "İki oyuncu da sayısını kilitleyince oyun başlayacak.");
 
-    hideResultOverlay();
     $("guessBtn").disabled = true;
     return;
   }
@@ -319,8 +348,7 @@ function updateGameDisplay(state) {
   if (status === "last_chance") {
     lastStatus = status;
 
-    // Son tahmin aşamasında tam ekran pencere açılmaz.
-    // Böylece tahmin kutusu kullanılabilir kalır.
+    // Son tahmin sırasında tam ekran pencere açılmaz.
     hideResultOverlay();
 
     if (myTurn) {
@@ -338,7 +366,7 @@ function updateGameDisplay(state) {
     lastStatus = status;
     $("guessBtn").disabled = true;
 
-    if (winner == null) {
+    if (winner === null || winner === undefined) {
       showMessage("turn", "Oyun berabere bitti!");
       showResultOverlay("BERABERE!");
     } else if (Number(winner) === playerNumber) {
@@ -411,7 +439,6 @@ function renderMyGuesses() {
       span.className = "guess-digit";
 
       const color = numberMarks[index + "_" + digit];
-
       if (color) span.classList.add(color);
 
       span.textContent = digit;
@@ -454,7 +481,6 @@ function renderNumberBoard() {
     button.textContent = i;
 
     const color = numberMarks["number_" + i];
-
     if (color) button.classList.add(color);
 
     button.addEventListener("click", () => {
@@ -505,7 +531,6 @@ function initializeGame() {
   $("secret").disabled = Boolean(ownSecret);
   $("lockBtn").disabled = Boolean(ownSecret);
 
-  // Kendi sayını gizleme.
   $("mySecretDisplay").textContent = ownSecret || "----";
 
   renderMyGuesses();
