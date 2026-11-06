@@ -112,6 +112,7 @@ button:active {
   background: linear-gradient(135deg, #252e45, #1b2030);
   border: 1px solid #526dff66;
   box-shadow: 0 4px 16px #00000022;
+  overflow: hidden;
 }
 
 #turn {
@@ -296,6 +297,7 @@ button:active {
   color: #c5ccdc;
   margin: 8px 2px 12px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .guess-turn-message.my-turn {
@@ -306,37 +308,34 @@ button:active {
   color: #ff8993;
 }
 
-.guess-turn-message.turn-arrived {
-  animation:
-    turnArrive 650ms ease-out,
-    waveMessage 1.8s ease-in-out 650ms infinite;
+/* Harfler soldan sağa dalga gibi hareket eder */
+.guess-turn-message span {
+  display: inline-block;
+  animation: letterWave 1.35s ease-in-out infinite;
+  will-change: transform;
 }
 
-@keyframes turnArrive {
-  0% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.88);
-  }
-
-  65% {
-    opacity: 1;
-    transform: translateY(-3px) scale(1.04);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes waveMessage {
-  0%, 100% {
+@keyframes letterWave {
+  0%, 60%, 100% {
     transform: translateY(0);
-    opacity: 0.8;
   }
 
-  50% {
-    transform: translateY(-4px);
+  30% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Mesaj geldiğinde hafifçe görünür */
+.guess-turn-message.turn-arrived {
+  animation: messageFadeIn 350ms ease-out both;
+}
+
+@keyframes messageFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
     opacity: 1;
   }
 }
@@ -431,6 +430,10 @@ button:active {
   .easter-egg-card {
     padding: 25px 18px 18px;
   }
+
+  .guess-turn-message {
+    font-size: 11px;
+  }
 }
 
 .guess-digit {
@@ -447,4 +450,10 @@ button:active {
 #gameResultText.last-chance {
   color: #b9c4d8;
   opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guess-turn-message span {
+    animation: none;
+  }
 }
