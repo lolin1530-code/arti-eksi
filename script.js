@@ -37,29 +37,18 @@ function setTurnMessage(message, color = "") {
 
   if (!turn || !panel) return;
 
-  const history = gameState && Array.isArray(gameState.history)
-    ? gameState.history
-    : [];
-
-  if (!message || history.length > 0) {
+  if (!message) {
     panel.classList.add("hidden");
     turn.textContent = "";
     return;
   }
 
   turn.textContent = message;
-  turn.style.color = color;
+  turn.style.color = color || "#f1f3f8";
   panel.classList.remove("hidden");
 }
 
-function setCoinMessage(message) {
-  const coin = $("coin");
-  if (!coin) return;
-
-  coin.textContent = message;
-}
-
-/* Ses sistemi */
+/* Ses sistemini tarayıcı etkileşimiyle açar */
 function enableTurnAudio() {
   const AudioContextClass =
     window.AudioContext || window.webkitAudioContext;
@@ -75,10 +64,13 @@ function enableTurnAudio() {
   }
 }
 
+/* Sıra sana geldiğinde kısa ve hafif bir ses */
 function playTurnSound() {
   if (!turnAudioContext) return;
 
   const play = () => {
+    if (!turnAudioContext) return;
+
     const oscillator = turnAudioContext.createOscillator();
     const gain = turnAudioContext.createGain();
 
@@ -86,16 +78,17 @@ function playTurnSound() {
 
     oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(660, now);
+    oscillator.frequency.setValueAtTime(880, now + 0.08);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.045, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
+    gain.gain.linearRampToValueAtTime(0.09, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
 
     oscillator.connect(gain);
     gain.connect(turnAudioContext.destination);
 
     oscillator.start(now);
-    oscillator.stop(now + 0.18);
+    oscillator.stop(now + 0.23);
   };
 
   if (turnAudioContext.state === "suspended") {
@@ -103,6 +96,13 @@ function playTurnSound() {
   } else {
     play();
   }
+}
+
+function setCoinMessage(message) {
+  const coin = $("coin");
+  if (!coin) return;
+
+  coin.textContent = message;
 }
 
 function clearStartMessage() {
@@ -271,6 +271,7 @@ async function createRoom() {
     lastStatus = "";
     previousTurnKey = "";
 
+    gameState = null;
     resetStartMessage();
 
     saveSession();
@@ -309,6 +310,7 @@ async function joinRoom() {
     lastStatus = "";
     previousTurnKey = "";
 
+    gameState = null;
     resetStartMessage();
 
     saveSession();
@@ -501,7 +503,6 @@ async function refreshState() {
       saveSession();
     }
 
-    /* Sıra rakipten sana geçtiyse ses çal */
     const previousWasActive =
       previousState &&
       ["playing", "last_chance"].includes(previousState.status);
@@ -514,7 +515,18 @@ async function refreshState() {
       ["playing", "last_chance"].includes(state.status) &&
       Number(state.turn) === Number(playerNumber);
 
-    if (previousWasActive && !previousWasMyTurn && currentIsMyTurn) {
+    const gameJustStartedOnMyTurn =
+      previousState &&
+      previousState.status === "waiting" &&
+      state.status === "playing" &&
+      currentIsMyTurn;
+
+    const turnPassedToMe =
+      previousWasActive &&
+      !previousWasMyTurn &&
+      currentIsMyTurn;
+
+    if (gameJustStartedOnMyTurn || turnPassedToMe) {
       playTurnSound();
     }
 
@@ -538,14 +550,14 @@ async function refreshState() {
       if (!state.opponent_joined) {
         setTurnMessage("Rakip Bekleniyor", "#ff5364");
       } else if (!ownSecret && !state.opponent_locked) {
-        setTurnMessage("Gizli Sayıların Kilitlenmesi Bekleniyor", "#e8c34d");
+        setTurnMessage("İki Oyuncunun da Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
       } else if (ownSecret && !state.opponent_locked) {
         setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
       } else if (!ownSecret && state.opponent_locked) {
         setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
       } else {
         setTurnMessage(
-          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
+          "İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere",
           "#27c982"
         );
       }
@@ -568,7 +580,7 @@ async function refreshState() {
       } else {
         if (!startMessageShown && !startMessageTimer) {
           setTurnMessage(
-            "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
+            "İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere",
             "#27c982"
           );
 
@@ -592,14 +604,14 @@ async function refreshState() {
       $("restartStatus").classList.add("hidden");
       $("restartBtn").classList.add("hidden");
 
+      setTurnMessage("");
+
       if (myTurn) {
         $("gameResultText").textContent = "SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
-        setTurnMessage("Sıra sende.");
       } else {
         $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
-        setTurnMessage("Rakibin sırası.");
       }
 
     } else if (state.status === "finished") {
@@ -609,16 +621,15 @@ async function refreshState() {
       $("gameResultBar").classList.remove("hidden");
       $("restartBtn").classList.remove("hidden");
 
+      setTurnMessage("");
+
       if (state.winner === null || state.winner === undefined) {
-        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "BERABERE!";
         $("gameResultText").style.color = "#e8c34d";
       } else if (Number(state.winner) === playerNumber) {
-        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAZANDIN!";
         $("gameResultText").style.color = "#27c982";
       } else {
-        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAYBETTİN!";
         $("gameResultText").style.color = "#ff5364";
       }
@@ -736,7 +747,7 @@ function renderMyGuesses() {
   }
 }
 
-/* Sıra mesajı: aynı sıra devam ederken DOM'u yeniden oluşturmaz */
+/* Sıra mesajı: harfleri dalga şeklinde oluşturur */
 function renderTurnIndicator() {
   if (
     !gameState ||
@@ -763,7 +774,7 @@ function renderTurnIndicator() {
   if (
     existing &&
     existing.parentElement === target &&
-    existing.textContent === messageText
+    existing.dataset.turnKey === turnKey
   ) {
     return;
   }
@@ -777,7 +788,16 @@ function renderTurnIndicator() {
     (myTurn ? "my-turn" : "opponent-turn") +
     " turn-arrived";
 
-  message.textContent = messageText;
+  message.dataset.turnKey = turnKey;
+
+  [...messageText].forEach((character, index) => {
+    const letter = document.createElement("span");
+
+    letter.textContent = character === " " ? "\u00A0" : character;
+    letter.style.animationDelay = (index * 0.055) + "s";
+
+    message.appendChild(letter);
+  });
 
   target.appendChild(message);
 
@@ -877,8 +897,9 @@ function initializeGame() {
   $("gameScreen").classList.add("hidden");
   $("connectionScreen").classList.remove("hidden");
 
-  /* Tarayıcı ses izni */
-  document.addEventListener("pointerdown", enableTurnAudio, { once: true });
+  /* Tarayıcı ses iznini ilk kullanıcı etkileşiminde aç */
+  document.addEventListener("pointerdown", enableTurnAudio);
+  document.addEventListener("keydown", enableTurnAudio);
 
   $("connectBtn").addEventListener("click", connect);
   $("createRoomBtn").addEventListener("click", createRoom);
