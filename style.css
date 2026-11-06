@@ -382,3 +382,8 @@ button:active {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+/* Son şans mesajı: daha pastel ve sakin görünüm */
+#gameResultText.last-chance {
+  color: #b9c4d8;
+  opacity: 0.8;
+}
