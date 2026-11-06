@@ -81,7 +81,7 @@ function playTurnSound() {
     oscillator.frequency.setValueAtTime(880, now + 0.08);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.09, now + 0.025);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.025);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
 
     oscillator.connect(gain);
