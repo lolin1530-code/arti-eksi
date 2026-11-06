@@ -1,4 +1,3 @@
-
 let projectUrl = "";
 let apiKey = "";
 let playerToken = "";
@@ -14,6 +13,9 @@ let ownSecret = "";
 let startMessageTimer = null;
 let startMessageShown = false;
 
+let turnAudioContext = null;
+let previousTurnKey = "";
+
 const $ = id => document.getElementById(id);
 
 function setColor(color) {
@@ -21,18 +23,33 @@ function setColor(color) {
 
   document.querySelectorAll(".color-choice").forEach(button => {
     const selected = button.dataset.color === color;
+
     button.classList.toggle("active", selected);
     button.style.outline = selected ? "4px solid white" : "none";
     button.style.filter = selected ? "brightness(1.15)" : "brightness(0.8)";
   });
 }
 
+/* Üst durum kutusunu yönetir */
 function setTurnMessage(message, color = "") {
   const turn = $("turn");
-  if (!turn) return;
+  const panel = $("turnPanel");
+
+  if (!turn || !panel) return;
+
+  const history = gameState && Array.isArray(gameState.history)
+    ? gameState.history
+    : [];
+
+  if (!message || history.length > 0) {
+    panel.classList.add("hidden");
+    turn.textContent = "";
+    return;
+  }
 
   turn.textContent = message;
   turn.style.color = color;
+  panel.classList.remove("hidden");
 }
 
 function setCoinMessage(message) {
@@ -40,6 +57,52 @@ function setCoinMessage(message) {
   if (!coin) return;
 
   coin.textContent = message;
+}
+
+/* Ses sistemi */
+function enableTurnAudio() {
+  const AudioContextClass =
+    window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextClass) return;
+
+  if (!turnAudioContext) {
+    turnAudioContext = new AudioContextClass();
+  }
+
+  if (turnAudioContext.state === "suspended") {
+    turnAudioContext.resume().catch(() => {});
+  }
+}
+
+function playTurnSound() {
+  if (!turnAudioContext) return;
+
+  const play = () => {
+    const oscillator = turnAudioContext.createOscillator();
+    const gain = turnAudioContext.createGain();
+
+    const now = turnAudioContext.currentTime;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(660, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.045, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
+
+    oscillator.connect(gain);
+    gain.connect(turnAudioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.18);
+  };
+
+  if (turnAudioContext.state === "suspended") {
+    turnAudioContext.resume().then(play).catch(() => {});
+  } else {
+    play();
+  }
 }
 
 function clearStartMessage() {
@@ -62,7 +125,11 @@ function resetStartMessage() {
 
 function saveSession() {
   localStorage.setItem("arti_session", JSON.stringify({
-    projectUrl, apiKey, playerToken, playerNumber, roomCode
+    projectUrl,
+    apiKey,
+    playerToken,
+    playerNumber,
+    roomCode
   }));
 }
 
@@ -87,9 +154,11 @@ function saveOwnSecret() {
 
 function loadOwnSecret() {
   ownSecret = localStorage.getItem("arti_secret_" + playerToken) || "";
+
   $("secret").value = ownSecret;
   $("secret").disabled = !!ownSecret;
   $("lockBtn").disabled = !!ownSecret;
+
   renderOwnSecret();
 }
 
@@ -99,6 +168,8 @@ function clearRoundData() {
   ownSecret = "";
   notes = [];
   numberMarks = {};
+
+  previousTurnKey = "";
 
   localStorage.removeItem("arti_secret_" + playerToken);
 
@@ -198,6 +269,8 @@ async function createRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
+    previousTurnKey = "";
+
     resetStartMessage();
 
     saveSession();
@@ -234,6 +307,8 @@ async function joinRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
+    previousTurnKey = "";
+
     resetStartMessage();
 
     saveSession();
@@ -413,6 +488,8 @@ async function refreshState() {
   if (!playerToken) return;
 
   try {
+    const previousState = gameState;
+
     const state = await rpc("get_game_state", {
       p_token: playerToken
     });
@@ -422,6 +499,23 @@ async function refreshState() {
     if (state.player !== undefined && state.player !== null) {
       playerNumber = Number(state.player);
       saveSession();
+    }
+
+    /* Sıra rakipten sana geçtiyse ses çal */
+    const previousWasActive =
+      previousState &&
+      ["playing", "last_chance"].includes(previousState.status);
+
+    const previousWasMyTurn =
+      previousWasActive &&
+      Number(previousState.turn) === Number(playerNumber);
+
+    const currentIsMyTurn =
+      ["playing", "last_chance"].includes(state.status) &&
+      Number(state.turn) === Number(playerNumber);
+
+    if (previousWasActive && !previousWasMyTurn && currentIsMyTurn) {
+      playTurnSound();
     }
 
     roomCode = state.room_code || roomCode;
@@ -450,7 +544,10 @@ async function refreshState() {
       } else if (!ownSecret && state.opponent_locked) {
         setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
       } else {
-        setTurnMessage("Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor", "#27c982");
+        setTurnMessage(
+          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
+          "#27c982"
+        );
       }
 
       if (!ownSecret) {
@@ -639,29 +736,52 @@ function renderMyGuesses() {
   }
 }
 
+/* Sıra mesajı: aynı sıra devam ederken DOM'u yeniden oluşturmaz */
 function renderTurnIndicator() {
-  document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
-
   if (
     !gameState ||
     !["playing", "last_chance"].includes(gameState.status)
   ) {
+    document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
+    previousTurnKey = "";
     return;
   }
 
   const myTurn = Number(gameState.turn) === Number(playerNumber);
-
   const target = $(myTurn ? "myGuesses" : "opponentGuesses");
 
   if (!target) return;
 
-  const message = document.createElement("div");
-  message.className = "guess-turn-message";
-  message.textContent = myTurn
+  const messageText = myTurn
     ? "Tahminin Bekleniyor..."
     : "Rakip Tahmin Yapıyor...";
 
+  const turnKey = gameState.status + ":" + gameState.turn;
+
+  const existing = document.querySelector(".guess-turn-message");
+
+  if (
+    existing &&
+    existing.parentElement === target &&
+    existing.textContent === messageText
+  ) {
+    return;
+  }
+
+  document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
+
+  const message = document.createElement("div");
+
+  message.className =
+    "guess-turn-message " +
+    (myTurn ? "my-turn" : "opponent-turn") +
+    " turn-arrived";
+
+  message.textContent = messageText;
+
   target.appendChild(message);
+
+  previousTurnKey = turnKey;
 }
 
 function renderNumberBoard() {
@@ -756,6 +876,9 @@ function loadSession() {
 function initializeGame() {
   $("gameScreen").classList.add("hidden");
   $("connectionScreen").classList.remove("hidden");
+
+  /* Tarayıcı ses izni */
+  document.addEventListener("pointerdown", enableTurnAudio, { once: true });
 
   $("connectBtn").addEventListener("click", connect);
   $("createRoomBtn").addEventListener("click", createRoom);
