@@ -77,6 +77,7 @@ function clearRoundData() {
 
   $("restartStatus").classList.add("hidden");
   $("gameResultBar").classList.add("hidden");
+  $("restartBtn").classList.remove("hidden");
 
   $("coin").textContent = "İki oyuncu da sayısını kilitleyince oyun başlayacak.";
 
@@ -396,19 +397,25 @@ async function refreshState() {
       $("gameResultBar").classList.remove("hidden");
       $("restartStatus").classList.add("hidden");
 
+      // Son şans sırasında tekrar oynama butonu görünmez.
+      $("restartBtn").classList.add("hidden");
+
       if (myTurn) {
         $("gameResultText").textContent = "SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
-        $("turn").textContent = "Son tahmin hakkını kullan!";
+        $("turn").textContent = "Sıra sende!";
       } else {
         $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
-        $("turn").textContent = "Rakibinin son tahminini bekle.";
+        $("turn").textContent = "Rakibin sırası.";
       }
 
     } else if (state.status === "finished") {
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
+
+      // Oyun bittiğinde tekrar oynama butonu görünür.
+      $("restartBtn").classList.remove("hidden");
 
       if (state.winner === null || state.winner === undefined) {
         $("turn").textContent = "Oyun sona erdi.";
