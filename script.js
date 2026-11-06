@@ -229,7 +229,6 @@ async function lockSecret() {
     $("secret").disabled = true;
     $("lockBtn").disabled = true;
 
-    // 8041 gizli sayı olarak kilitlenirse sadece bu oyuncuda açılır.
     if (secret === "8041") {
       showEasterEgg();
     }
@@ -392,12 +391,20 @@ async function refreshState() {
     } else if (state.status === "last_chance") {
       const myTurn = Number(state.turn) === playerNumber;
 
-      $("turn").textContent = myTurn
-        ? "SON TAHMİNİNİ YAP!"
-        : "Rakibin son tahmin hakkını kullanıyor. Bekle!";
-
       $("guessBtn").disabled = !myTurn || !ownSecret;
-      hideGameResult();
+
+      $("gameResultBar").classList.remove("hidden");
+      $("restartStatus").classList.add("hidden");
+
+      if (myTurn) {
+        $("gameResultText").textContent = "SON ŞANSIN!";
+        $("gameResultText").style.color = "#e8c34d";
+        $("turn").textContent = "Son tahmin hakkını kullan!";
+      } else {
+        $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
+        $("gameResultText").style.color = "#e8c34d";
+        $("turn").textContent = "Rakibinin son tahminini bekle.";
+      }
 
     } else if (state.status === "finished") {
       $("guessBtn").disabled = true;
