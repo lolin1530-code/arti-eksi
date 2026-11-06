@@ -15,6 +15,7 @@ const $ = id => document.getElementById(id);
 
 function setColor(color) {
   $("color").value = color;
+
   document.querySelectorAll(".color-choice").forEach(button => {
     const selected = button.dataset.color === color;
     button.classList.toggle("active", selected);
@@ -54,6 +55,34 @@ function loadOwnSecret() {
   $("secret").disabled = !!ownSecret;
   $("lockBtn").disabled = !!ownSecret;
   renderOwnSecret();
+}
+
+function clearRoundData() {
+  ownSecret = "";
+  notes = [];
+  numberMarks = {};
+
+  localStorage.removeItem("arti_secret_" + playerToken);
+
+  saveNotes();
+
+  $("secret").value = "";
+  $("secret").disabled = false;
+  $("lockBtn").disabled = false;
+  $("secretStatus").textContent = "Yeni sayını belirle.";
+
+  $("guess").value = "";
+  $("feedback").textContent = "Yeni oyun başladı.";
+  $("guessBtn").disabled = true;
+
+  $("restartStatus").classList.add("hidden");
+  $("gameResultBar").classList.add("hidden");
+
+  $("coin").textContent = "İki oyuncu da sayısını kilitleyince oyun başlayacak.";
+
+  renderOwnSecret();
+  renderMyGuesses();
+  renderNumberBoard();
 }
 
 function showGameScreen() {
@@ -116,15 +145,19 @@ async function connect() {
 async function createRoom() {
   try {
     const result = await rpc("create_room");
+
     playerToken = result.token || result.player_token;
     playerNumber = 1;
     roomCode = result.room_code;
 
-    if (!playerToken || !roomCode) throw new Error("Oda bilgileri alınamadı.");
+    if (!playerToken || !roomCode) {
+      throw new Error("Oda bilgileri alınamadı.");
+    }
 
     notes = [];
     numberMarks = {};
     ownSecret = "";
+    lastStatus = "";
 
     saveSession();
     loadNotes();
@@ -141,19 +174,25 @@ async function createRoom() {
 async function joinRoom() {
   try {
     const code = $("roomCode").value.trim().toUpperCase();
+
     if (!code) throw new Error("Oda kodunu gir.");
 
-    const result = await rpc("join_room", { p_room_code: code });
+    const result = await rpc("join_room", {
+      p_room_code: code
+    });
 
     playerToken = result.token || result.player_token;
     playerNumber = 2;
     roomCode = result.room_code || code;
 
-    if (!playerToken) throw new Error("Oyuncu bilgisi alınamadı.");
+    if (!playerToken) {
+      throw new Error("Oyuncu bilgisi alınamadı.");
+    }
 
     notes = [];
     numberMarks = {};
     ownSecret = "";
+    lastStatus = "";
 
     saveSession();
     loadNotes();
@@ -171,12 +210,16 @@ async function lockSecret() {
   const secret = $("secret").value.trim();
 
   if (!/^[1-9][0-9]{3}$/.test(secret) || new Set(secret).size !== 4) {
-    $("secretStatus").textContent = "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
+    $("secretStatus").textContent =
+      "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
     return;
   }
 
   try {
-    await rpc("lock_secret", { p_token: playerToken, p_secret: secret });
+    await rpc("lock_secret", {
+      p_token: playerToken,
+      p_secret: secret
+    });
 
     ownSecret = secret;
     saveOwnSecret();
@@ -192,26 +235,113 @@ async function lockSecret() {
   }
 }
 
+function showEasterEgg() {
+  $("easterEgg").classList.remove("hidden");
+}
+
+function closeEasterEgg() {
+  $("easterEgg").classList.add("hidden");
+}
+
 async function submitGuess() {
   const guess = $("guess").value.trim();
 
   if (!/^[1-9][0-9]{3}$/.test(guess) || new Set(guess).size !== 4) {
-    $("feedback").textContent = "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
+    $("feedback").textContent =
+      "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
     return;
   }
 
   try {
-    const result = await rpc("submit_guess", { p_token: playerToken, p_guess: guess });
+    const result = await rpc("submit_guess", {
+      p_token: playerToken,
+      p_guess: guess
+    });
 
-    notes.push({ guess, plus: result.plus, minus: result.minus, marks: {} });
+    notes.push({
+      guess,
+      plus: result.plus,
+      minus: result.minus,
+      marks: {}
+    });
+
     saveNotes();
 
     $("guess").value = "";
-    $("feedback").textContent = "+" + result.plus + " doğru konum · -" + result.minus + " yanlış konum";
+
+    $("feedback").textContent =
+      "+" + result.plus + " doğru konum · -" +
+      result.minus + " yanlış konum";
+
+    if (guess === "8041") {
+      showEasterEgg();
+    }
 
     await refreshState();
+
   } catch (error) {
     $("feedback").textContent = error.message;
+  }
+}
+
+function hideGameResult() {
+  $("gameResultBar").classList.add("hidden");
+  $("restartStatus").classList.add("hidden");
+}
+
+async function updateRestartStatus() {
+  try {
+    const result = await rpc("get_restart_status", {
+      p_token: playerToken
+    });
+
+    if (result.me) {
+      $("restartBtn").disabled = true;
+      $("restartBtn").textContent = "İSTEK GÖNDERİLDİ";
+
+      $("restartStatus").textContent =
+        "Rakibin de tekrar oynamasını bekliyorsun.";
+
+      $("restartStatus").classList.remove("hidden");
+    } else {
+      $("restartBtn").disabled = false;
+      $("restartBtn").textContent = "TEKRAR OYNA";
+
+      $("restartStatus").classList.add("hidden");
+    }
+
+  } catch (error) {
+    $("restartStatus").textContent = error.message;
+    $("restartStatus").classList.remove("hidden");
+  }
+}
+
+async function requestRestart() {
+  if (!gameState || gameState.status !== "finished") return;
+
+  $("restartBtn").disabled = true;
+  $("restartBtn").textContent = "BEKLE...";
+
+  try {
+    const result = await rpc("request_restart", {
+      p_token: playerToken
+    });
+
+    if (result.restarted) {
+      $("restartStatus").textContent = "Yeni oyun hazırlanıyor.";
+      await refreshState();
+    } else {
+      $("restartBtn").textContent = "İSTEK GÖNDERİLDİ";
+      $("restartStatus").textContent =
+        "Rakibin de tekrar oynamasını bekliyorsun.";
+      $("restartStatus").classList.remove("hidden");
+    }
+
+  } catch (error) {
+    $("restartBtn").disabled = false;
+    $("restartBtn").textContent = "TEKRAR OYNA";
+    $("restartStatus").textContent = error.message;
+    $("restartStatus").classList.remove("hidden");
   }
 }
 
@@ -219,43 +349,78 @@ async function refreshState() {
   if (!playerToken) return;
 
   try {
-    const state = await rpc("get_game_state", { p_token: playerToken });
+    const state = await rpc("get_game_state", {
+      p_token: playerToken
+    });
+
     gameState = state;
 
-    // Oyuncu numarasını Supabase'den al.
     if (state.player !== undefined && state.player !== null) {
       playerNumber = Number(state.player);
       saveSession();
     }
 
-    $("gameRoomInfo").textContent = "Oda kodu: " + (state.room_code || roomCode);
+    roomCode = state.room_code || roomCode;
+
+    $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
+
+    // İki oyuncu da tekrar oynayınca yeni tura geçiş.
+    if (lastStatus === "finished" && state.status === "waiting") {
+      clearRoundData();
+    }
 
     if (state.status === "waiting") {
       $("turn").textContent = "Rakip bekleniyor.";
       $("guessBtn").disabled = true;
+      hideGameResult();
+
+      if (!ownSecret) {
+        $("secret").disabled = false;
+        $("lockBtn").disabled = false;
+      }
 
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
-      $("turn").textContent = myTurn ? "Sıra sende!" : "Rakibin sırası.";
+
+      $("turn").textContent = myTurn
+        ? "Sıra sende!"
+        : "Rakibin sırası.";
+
       $("guessBtn").disabled = !myTurn || !ownSecret;
+      hideGameResult();
 
     } else if (state.status === "last_chance") {
       const myTurn = Number(state.turn) === playerNumber;
+
       $("turn").textContent = myTurn
         ? "SON TAHMİNİNİ YAP!"
         : "Rakibin son tahmin hakkını kullanıyor. Bekle!";
+
       $("guessBtn").disabled = !myTurn || !ownSecret;
+      hideGameResult();
 
     } else if (state.status === "finished") {
+      $("guessBtn").disabled = true;
+
+      $("gameResultBar").classList.remove("hidden");
+
       if (state.winner === null || state.winner === undefined) {
-        $("turn").textContent = "BERABERE!";
+        $("turn").textContent = "Oyun sona erdi.";
+        $("gameResultText").textContent = "BERABERE!";
+        $("gameResultText").style.color = "#e8c34d";
+
       } else if (Number(state.winner) === playerNumber) {
-        $("turn").textContent = "KAZANDIN!";
+        $("turn").textContent = "Oyun sona erdi.";
+        $("gameResultText").textContent = "KAZANDIN!";
+        $("gameResultText").style.color = "#27c982";
+
       } else {
-        $("turn").textContent = "KAYBETTİN!";
+        $("turn").textContent = "Oyun sona erdi.";
+        $("gameResultText").textContent = "KAYBETTİN!";
+        $("gameResultText").style.color = "#ff5364";
       }
 
-      $("guessBtn").disabled = true;
+      await updateRestartStatus();
     }
 
     if (state.opponent_locked) {
@@ -263,12 +428,16 @@ async function refreshState() {
     }
 
     if (state.status === "playing" && lastStatus !== "playing") {
-      $("coin").textContent = "🪙 Oyuna başlayan: Oyuncu " + state.turn;
+      $("coin").textContent =
+        "🪙 Oyuna başlayan: Oyuncu " + state.turn;
     }
 
     lastStatus = state.status;
 
-    if (Array.isArray(state.history)) renderOpponentGuesses(state.history);
+    if (Array.isArray(state.history)) {
+      renderOpponentGuesses(state.history);
+    }
+
     renderMyGuesses();
 
   } catch (error) {
@@ -284,7 +453,16 @@ function renderOpponentGuesses(history) {
   const list = $("opponentGuesses");
   list.innerHTML = "";
 
-  history.filter(item => Number(item.player) !== playerNumber).forEach(item => {
+  const opponentHistory = history.filter(
+    item => Number(item.player) !== playerNumber
+  );
+
+  if (opponentHistory.length === 0) {
+    list.textContent = "Henüz tahmin yok.";
+    return;
+  }
+
+  opponentHistory.forEach(item => {
     const row = document.createElement("div");
     row.className = "guess-row";
 
@@ -309,6 +487,11 @@ function renderMyGuesses() {
   const list = $("myGuesses");
   list.innerHTML = "";
 
+  if (notes.length === 0) {
+    list.textContent = "Henüz tahmin yok.";
+    return;
+  }
+
   notes.forEach(item => {
     const row = document.createElement("div");
     row.className = "guess-row";
@@ -318,7 +501,10 @@ function renderMyGuesses() {
       cell.className = "guess-digit";
 
       const mark = item.marks && item.marks[i];
-      if (mark) cell.classList.add(mark);
+
+      if (mark) {
+        cell.classList.add(mark);
+      }
 
       cell.textContent = item.guess[i];
 
@@ -326,8 +512,11 @@ function renderMyGuesses() {
         const color = $("color").value;
         item.marks = item.marks || {};
 
-        if (item.marks[i] === color) delete item.marks[i];
-        else item.marks[i] = color;
+        if (item.marks[i] === color) {
+          delete item.marks[i];
+        } else {
+          item.marks[i] = color;
+        }
 
         saveNotes();
         renderMyGuesses();
@@ -355,18 +544,24 @@ function renderNumberBoard() {
     button.className = "digit";
     button.textContent = i;
 
-    if (numberMarks[i]) button.classList.add(numberMarks[i]);
+    if (numberMarks[i]) {
+      button.classList.add(numberMarks[i]);
+    }
 
     button.onclick = () => {
       const color = $("color").value;
 
       if (color === "yellow") {
-        $("feedback").textContent = "Rakam tahtasında kırmızı veya yeşil kullanabilirsin.";
+        $("feedback").textContent =
+          "Rakam tahtasında kırmızı veya yeşil kullanabilirsin.";
         return;
       }
 
-      if (numberMarks[i] === color) delete numberMarks[i];
-      else numberMarks[i] = color;
+      if (numberMarks[i] === color) {
+        delete numberMarks[i];
+      } else {
+        numberMarks[i] = color;
+      }
 
       saveNotes();
       renderNumberBoard();
@@ -377,17 +572,23 @@ function renderNumberBoard() {
 }
 
 function resetNotes() {
-  if (!confirm("Bütün kişisel işaretlemelerin silinsin mi?")) return;
+  if (!confirm("Bütün kişisel işaretlemelerin silinsin mi?")) {
+    return;
+  }
 
   notes.forEach(item => item.marks = {});
   numberMarks = {};
+
   saveNotes();
   renderMyGuesses();
   renderNumberBoard();
 }
 
 function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
+  if (pollTimer) {
+    clearInterval(pollTimer);
+  }
+
   refreshState();
   pollTimer = setInterval(refreshState, 2500);
 }
@@ -433,6 +634,9 @@ function initializeGame() {
   $("guessBtn").addEventListener("click", submitGuess);
   $("resetNotesBtn").addEventListener("click", resetNotes);
 
+  $("restartBtn").addEventListener("click", requestRestart);
+  $("closeEasterEgg").addEventListener("click", closeEasterEgg);
+
   document.querySelectorAll(".color-choice").forEach(button => {
     button.addEventListener("click", () => {
       setColor(button.dataset.color);
@@ -446,12 +650,14 @@ function initializeGame() {
       clearInterval(pollTimer);
       pollTimer = null;
     }
+
     showConnectionScreen();
   });
 
   renderNumberBoard();
   renderMyGuesses();
   renderOwnSecret();
+
   loadSession();
 }
 
