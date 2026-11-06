@@ -37,6 +37,12 @@
         <button id="joinRoomBtn" type="button">Odaya Katıl</button>
         <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
       </div>
+
+      <div class="panel profile-entry-panel">
+        <h2>Oyuncu Profili</h2>
+        <p id="profileEntryText">Henüz bir profil oluşturmadın.</p>
+        <button id="openProfileBtn" type="button">+ Profil Oluştur</button>
+      </div>
     </section>
 
     <section id="gameScreen" class="hidden">
@@ -148,6 +154,82 @@
       </div>
     </section>
   </main>
+
+  <!-- Profil penceresi -->
+  <div id="profileModal" class="profile-modal hidden" role="dialog" aria-modal="true">
+    <div class="profile-card">
+
+      <button id="closeProfileBtn" class="profile-close" type="button">×</button>
+
+      <div id="profileCreateArea">
+        <h2>Profil Oluştur</h2>
+        <p class="profile-description">
+          ARTI EKSİ dünyasına katılmak için kendine bir kullanıcı adı seç.
+        </p>
+
+        <label for="profileUsername">Kullanıcı adı</label>
+        <input
+          id="profileUsername"
+          type="text"
+          maxlength="20"
+          placeholder="Örn. Oyuncu123"
+          autocomplete="nickname"
+        >
+
+        <p id="profileFormStatus" class="profile-form-status"></p>
+
+        <button id="saveProfileBtn" type="button" class="profile-primary-btn">
+          Profili Oluştur
+        </button>
+      </div>
+
+      <div id="profileViewArea" class="hidden">
+        <div class="profile-heading">
+          <div class="profile-avatar">
+            <span id="profileAvatarLetter">O</span>
+          </div>
+
+          <div class="profile-heading-info">
+            <h2 id="profileDisplayName">Oyuncu</h2>
+            <p>ARTI EKSİ oyuncusu</p>
+          </div>
+        </div>
+
+        <div class="profile-stats">
+          <div class="profile-stat win-stat">
+            <span class="profile-stat-label">WIN</span>
+            <strong id="profileWins">0</strong>
+            <span>Galibiyet</span>
+          </div>
+
+          <div class="profile-stat lose-stat">
+            <span class="profile-stat-label">LOSE</span>
+            <strong id="profileLosses">0</strong>
+            <span>Mağlubiyet</span>
+          </div>
+        </div>
+
+        <div class="profile-rate">
+          <div class="profile-rate-heading">
+            <span>Galibiyet oranı</span>
+            <strong id="profileWinRate">%0</strong>
+          </div>
+          <div class="profile-rate-track">
+            <div id="profileWinRateBar" class="profile-rate-fill"></div>
+          </div>
+        </div>
+
+        <p class="profile-note">
+          İstatistikler profil oluşturulduktan sonra oynanan tamamlanmış maçlardan hesaplanır.
+        </p>
+
+        <button id="editProfileBtn" type="button" class="profile-secondary-btn">
+          <span>✎</span> Kullanıcı Adını Değiştir
+        </button>
+      </div>
+
+    </div>
+  </div>
 
   <div id="easterEgg" class="easter-egg hidden" role="dialog" aria-live="polite">
     <div class="easter-egg-card">
