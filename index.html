@@ -13,27 +13,20 @@
     <section id="connectionScreen">
       <div class="panel">
         <h2>Supabase Bağlantısı</h2>
-
         <label for="projectUrl">Project URL</label>
         <input id="projectUrl" type="url" placeholder="https://....supabase.co">
-
         <label for="apiKey">Publishable Key</label>
         <input id="apiKey" type="text" placeholder="sb_publishable_...">
-
         <button id="connectBtn" type="button">Bağlan</button>
         <p id="connectionStatus">Bağlantı bekleniyor.</p>
       </div>
 
       <div class="panel">
         <h2>Oyun Odası</h2>
-
         <button id="createRoomBtn" type="button">Yeni Oda Oluştur</button>
-
         <p class="hint">VEYA</p>
-
         <label for="roomCode">Oda Kodu</label>
         <input id="roomCode" type="text" maxlength="6" placeholder="Arkadaşının oda kodu">
-
         <button id="joinRoomBtn" type="button">Odaya Katıl</button>
         <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
       </div>
@@ -46,7 +39,6 @@
     </section>
 
     <section id="gameScreen" class="hidden">
-
       <div class="panel game-header">
         <div id="gameRoomInfo">Oda kodu:</div>
         <button id="backBtn" type="button">Bağlantı ekranına dön</button>
@@ -58,137 +50,79 @@
 
       <div class="panel" id="secretPanel">
         <h2>Gizli Sayın</h2>
-
-        <p class="hint">
-          İlk rakam sıfır olmayan, dört farklı rakamdan oluşan sayını belirle.
-        </p>
-
-        <input
-          id="secret"
-          type="password"
-          inputmode="numeric"
-          maxlength="4"
-          placeholder="Örn. 5831"
-        >
-
+        <p class="hint">İlk rakam sıfır olmayan, dört farklı rakamdan oluşan sayını belirle.</p>
+        <input id="secret" type="password" inputmode="numeric" maxlength="4" placeholder="Örn. 5831">
         <button id="lockBtn" type="button">Sayımı Kilitle</button>
-
         <p id="secretStatus">Sayını henüz kilitlemedin.</p>
-
-        <div class="secret-display">
-          <span id="mySecretDisplay">----</span>
-        </div>
+        <div class="secret-display"><span id="mySecretDisplay">----</span></div>
       </div>
 
       <div class="panel color-picker-panel">
         <h2>İşaretleme Rengi</h2>
-
         <div class="color-buttons">
-          <button type="button" class="color-choice red active" data-color="red">
-            KIRMIZI
-          </button>
-
-          <button type="button" class="color-choice yellow" data-color="yellow">
-            SARI
-          </button>
-
-          <button type="button" class="color-choice green" data-color="green">
-            YEŞİL
-          </button>
+          <button type="button" class="color-choice red active" data-color="red">KIRMIZI</button>
+          <button type="button" class="color-choice yellow" data-color="yellow">SARI</button>
+          <button type="button" class="color-choice green" data-color="green">YEŞİL</button>
         </div>
-
         <input type="hidden" id="color" value="red">
-
-        <p class="hint">
-          Tahminlerindeki rakamları tek tek işaretleyebilirsin.
-        </p>
-
+        <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
         <div id="gameResultBar" class="game-result-bar hidden">
           <div id="gameResultText"></div>
           <button id="restartBtn" type="button">TEKRAR OYNA</button>
         </div>
-
         <p id="restartStatus" class="restart-status hidden"></p>
       </div>
 
       <div class="player-columns">
-        <div class="panel">
-          <h2>Kendi Tahminlerin</h2>
-          <div id="myGuesses">Henüz tahmin yok.</div>
-        </div>
-
-        <div class="panel">
-          <h2>Rakibin Tahminleri</h2>
-          <div id="opponentGuesses">Henüz tahmin yok.</div>
-        </div>
+        <div class="panel"><h2>Kendi Tahminlerin</h2><div id="myGuesses">Henüz tahmin yok.</div></div>
+        <div class="panel"><h2>Rakibin Tahminleri</h2><div id="opponentGuesses">Henüz tahmin yok.</div></div>
       </div>
 
       <div class="panel">
         <h2>Tahmin Yap</h2>
-
-        <input
-          id="guess"
-          type="text"
-          inputmode="numeric"
-          maxlength="4"
-          placeholder="4 farklı rakam"
-        >
-
+        <input id="guess" type="text" inputmode="numeric" maxlength="4" placeholder="4 farklı rakam">
         <button id="guessBtn" type="button" disabled>Tahmin Et</button>
-
         <p id="feedback">Sıra sana geldiğinde tahmin yapabilirsin.</p>
       </div>
 
       <div class="panel">
         <h2>Rakam Tahtası</h2>
-
         <div id="numberBoard" class="number-board"></div>
-
-        <button id="resetNotesBtn" type="button">
-          Kişisel Notları Sıfırla
-        </button>
-
-        <p class="hint">
-          Kişisel notları sıfırlamak tahmin geçmişini silmez.
-        </p>
+        <button id="resetNotesBtn" type="button">Kişisel Notları Sıfırla</button>
+        <p class="hint">Kişisel notları sıfırlamak tahmin geçmişini silmez.</p>
       </div>
     </section>
   </main>
 
-  <!-- Profil penceresi -->
   <div id="profileModal" class="profile-modal hidden" role="dialog" aria-modal="true">
     <div class="profile-card">
-
       <button id="closeProfileBtn" class="profile-close" type="button">×</button>
 
       <div id="profileCreateArea">
         <h2>Profil Oluştur</h2>
-        <p class="profile-description">
-          ARTI EKSİ dünyasına katılmak için kendine bir kullanıcı adı seç.
-        </p>
-
+        <p class="profile-description">ARTI EKSİ dünyasına katılmak için kendine bir kullanıcı adı seç.</p>
         <label for="profileUsername">Kullanıcı adı</label>
-        <input
-          id="profileUsername"
-          type="text"
-          maxlength="20"
-          placeholder="Örn. Oyuncu123"
-          autocomplete="nickname"
-        >
-
+        <input id="profileUsername" type="text" maxlength="20" placeholder="Örn. Oyuncu123" autocomplete="nickname">
         <p id="profileFormStatus" class="profile-form-status"></p>
+        <button id="saveProfileBtn" type="button" class="profile-primary-btn">Profili Oluştur</button>
+        <button id="showRecoveryBtn" type="button" class="profile-secondary-btn">Mevcut Profilimi Kurtar</button>
+      </div>
 
-        <button id="saveProfileBtn" type="button" class="profile-primary-btn">
-          Profili Oluştur
-        </button>
+      <div id="profileRecoveryArea" class="hidden">
+        <h2>Profilini Kurtar</h2>
+        <p class="profile-description">Kullanıcı adını ve profil oluştururken aldığın kurtarma kodunu gir.</p>
+        <label for="recoveryUsername">Kullanıcı adı</label>
+        <input id="recoveryUsername" type="text" maxlength="20" placeholder="Kullanıcı adın" autocomplete="username">
+        <label for="recoveryCodeInput">Kurtarma kodu</label>
+        <input id="recoveryCodeInput" type="text" maxlength="64" placeholder="Kurtarma kodun" autocomplete="off">
+        <p id="recoveryStatus" class="profile-form-status"></p>
+        <button id="recoverProfileBtn" type="button" class="profile-primary-btn">Profilimi Geri Yükle</button>
+        <button id="backToProfileCreateBtn" type="button" class="profile-secondary-btn">Geri</button>
       </div>
 
       <div id="profileViewArea" class="hidden">
         <div class="profile-heading">
-          <div class="profile-avatar">
-            <span id="profileAvatarLetter">O</span>
-          </div>
-
+          <div class="profile-avatar"><span id="profileAvatarLetter">O</span></div>
           <div class="profile-heading-info">
             <h2 id="profileDisplayName">Oyuncu</h2>
             <p>ARTI EKSİ oyuncusu</p>
@@ -201,7 +135,6 @@
             <strong id="profileWins">0</strong>
             <span>Galibiyet</span>
           </div>
-
           <div class="profile-stat lose-stat">
             <span class="profile-stat-label">LOSE</span>
             <strong id="profileLosses">0</strong>
@@ -210,44 +143,48 @@
         </div>
 
         <div class="profile-rate">
-          <div class="profile-rate-heading">
-            <span>Galibiyet oranı</span>
-            <strong id="profileWinRate">%0</strong>
-          </div>
-          <div class="profile-rate-track">
-            <div id="profileWinRateBar" class="profile-rate-fill"></div>
-          </div>
+          <div class="profile-rate-heading"><span>Galibiyet oranı</span><strong id="profileWinRate">%0</strong></div>
+          <div class="profile-rate-track"><div id="profileWinRateBar" class="profile-rate-fill"></div></div>
         </div>
 
-        <p class="profile-note">
-          İstatistikler profil oluşturulduktan sonra oynanan tamamlanmış maçlardan hesaplanır.
-        </p>
+        <p class="profile-note">İstatistikler profil oluşturulduktan sonra oynanan tamamlanmış maçlardan hesaplanır.</p>
 
-        <button id="editProfileBtn" type="button" class="profile-secondary-btn">
-          <span>✎</span> Kullanıcı Adını Değiştir
-        </button>
+        <div class="recovery-box">
+          <h3>Profil Kurtarma Kodun</h3>
+          <p>Bu kodu güvenli bir yere kaydet. Tarayıcı verilerin silinirse profilini bu kodla geri yükleyebilirsin.</p>
+          <div class="recovery-code-row">
+            <code id="recoveryCodeDisplay">Henüz oluşturulmadı</code>
+            <button id="copyRecoveryCodeBtn" type="button">Kopyala</button>
+          </div>
+          <p id="recoveryCodeStatus" class="small-status"></p>
+        </div>
+
+        <button id="editProfileBtn" type="button" class="profile-secondary-btn">✎ Kullanıcı Adını Değiştir</button>
+
+        <div class="friends-section">
+          <h3>Arkadaş Bul</h3>
+          <div class="friend-search-row">
+            <input id="friendSearchInput" type="text" maxlength="20" placeholder="Kullanıcı adı">
+            <button id="friendSearchBtn" type="button">Ara</button>
+          </div>
+          <div id="friendSearchResults" class="friend-list"></div>
+          <p id="friendStatus" class="small-status"></p>
+
+          <h3>Arkadaşlık İstekleri</h3>
+          <div id="friendRequestsList" class="friend-list"><p class="friend-empty">İstekler yüklenmedi.</p></div>
+
+          <h3>Arkadaşlarım</h3>
+          <div id="friendsList" class="friend-list"><p class="friend-empty">Arkadaşlar yüklenmedi.</p></div>
+        </div>
       </div>
-
     </div>
   </div>
 
   <div id="easterEgg" class="easter-egg hidden" role="dialog" aria-live="polite">
     <div class="easter-egg-card">
-      <button
-        id="closeEasterEgg"
-        class="easter-egg-close"
-        type="button"
-        aria-label="Kapat"
-      >×</button>
-
+      <button id="closeEasterEgg" class="easter-egg-close" type="button" aria-label="Kapat">×</button>
       <h2>8041 TARİKATI</h2>
-
-      <p>
-        Kutsal 8041'in yolunda... Bu sayıyı seçip kaybeden herkes ya dersten
-        FD ile kaldı ya da bir lambader olarak 8 yıl yaşadı. 8041 yolunda
-        kazanmaya devam et. Doğru yoldasın yoldaş.
-      </p>
-
+      <p>Kutsal 8041'in yolunda... Bu sayıyı seçip kaybeden herkes ya dersten FD ile kaldı ya da bir lambader olarak 8 yıl yaşadı. 8041 yolunda kazanmaya devam et. Doğru yoldasın yoldaş.</p>
       <p class="easter-egg-signature">-8041 Tarikatı</p>
     </div>
   </div>
