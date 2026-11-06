@@ -199,10 +199,17 @@ async function createOrUpdateProfile() {
         throw new Error(result.message || "Kullanıcı adı değiştirilemedi.");
       }
 
-      playerProfile.username = username;
-      saveProfile();
-      await refreshRemoteProfile();
-      showProfileView();
+     if (!playerProfile.recoveryCode) {
+  playerProfile.recoveryCode = createSecureHex(16);
+  playerProfile.recoverySaved = false;
+  saveProfile();
+  await saveRecoveryCode();
+}
+
+playerProfile.username = username;
+saveProfile();
+await refreshRemoteProfile();
+showProfileView();
     }
   } catch (error) {
     $("profileFormStatus").textContent = error.message;
