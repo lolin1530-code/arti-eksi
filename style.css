@@ -390,3 +390,19 @@ button:active {
   color: #b9c4d8;
   opacity: 0.8;
 }
+.guess-turn-message {
+  animation: waveMessage 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes waveMessage {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
