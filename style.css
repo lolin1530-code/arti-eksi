@@ -1,3 +1,4 @@
+
 * {
   box-sizing: border-box;
 }
@@ -103,13 +104,6 @@ button:active {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-#coin {
-  text-align: center;
-  color: #aebcff;
-  font-weight: bold;
-  margin-bottom: 12px;
 }
 
 /* Renk seçme alanı */
@@ -281,6 +275,14 @@ button:active {
   min-height: 60px;
 }
 
+/* Sıra mesajı */
+.guess-turn-message {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c5ccdc;
+  margin: 4px 2px 10px;
+}
+
 /* 8041 Easter egg */
 .easter-egg {
   position: fixed;
@@ -382,7 +384,8 @@ button:active {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
-/* Son şans mesajı: daha pastel ve sakin görünüm */
+
+/* Son şans mesajı */
 #gameResultText.last-chance {
   color: #b9c4d8;
   opacity: 0.8;
