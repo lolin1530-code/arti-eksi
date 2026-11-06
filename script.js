@@ -229,6 +229,11 @@ async function lockSecret() {
     $("secret").disabled = true;
     $("lockBtn").disabled = true;
 
+    // 8041 gizli sayı olarak kilitlenirse sadece bu oyuncuda açılır.
+    if (secret === "8041") {
+      showEasterEgg();
+    }
+
     await refreshState();
   } catch (error) {
     $("secretStatus").textContent = error.message;
@@ -272,10 +277,6 @@ async function submitGuess() {
     $("feedback").textContent =
       "+" + result.plus + " doğru konum · -" +
       result.minus + " yanlış konum";
-
-    if (guess === "8041") {
-      showEasterEgg();
-    }
 
     await refreshState();
 
@@ -364,7 +365,6 @@ async function refreshState() {
 
     $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
 
-    // İki oyuncu da tekrar oynayınca yeni tura geçiş.
     if (lastStatus === "finished" && state.status === "waiting") {
       clearRoundData();
     }
@@ -401,7 +401,6 @@ async function refreshState() {
 
     } else if (state.status === "finished") {
       $("guessBtn").disabled = true;
-
       $("gameResultBar").classList.remove("hidden");
 
       if (state.winner === null || state.winner === undefined) {
