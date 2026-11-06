@@ -16,7 +16,195 @@ let startMessageShown = false;
 let turnAudioContext = null;
 let previousTurnKey = "";
 
+let playerProfile = null;
+
 const $ = id => document.getElementById(id);
+
+/* =========================
+   PROFİL SİSTEMİ
+========================= */
+
+function loadProfile() {
+  try {
+    playerProfile = JSON.parse(localStorage.getItem("arti_profile")) || null;
+  } catch {
+    playerProfile = null;
+  }
+
+  updateProfileEntry();
+}
+
+function saveProfile() {
+  localStorage.setItem("arti_profile", JSON.stringify(playerProfile));
+  updateProfileEntry();
+}
+
+function updateProfileEntry() {
+  const button = $("openProfileBtn");
+  const text = $("profileEntryText");
+
+  if (!button || !text) return;
+
+  if (playerProfile) {
+    text.textContent = "Hoş geldin, " + playerProfile.username + "!";
+    button.textContent = "Profilimi Görüntüle";
+  } else {
+    text.textContent = "Henüz bir profil oluşturmadın.";
+    button.textContent = "+ Profil Oluştur";
+  }
+}
+
+function openProfile() {
+  $("profileModal").classList.remove("hidden");
+
+  if (playerProfile) {
+    showProfileView();
+  } else {
+    showProfileCreate();
+  }
+}
+
+function closeProfile() {
+  $("profileModal").classList.add("hidden");
+  $("profileFormStatus").textContent = "";
+}
+
+function showProfileCreate() {
+  $("profileCreateArea").classList.remove("hidden");
+  $("profileViewArea").classList.add("hidden");
+
+  $("profileUsername").value = playerProfile
+    ? playerProfile.username
+    : "";
+
+  $("profileFormStatus").textContent = "";
+
+  $("saveProfileBtn").textContent = playerProfile
+    ? "Değişiklikleri Kaydet"
+    : "Profili Oluştur";
+}
+
+function showProfileView() {
+  $("profileCreateArea").classList.add("hidden");
+  $("profileViewArea").classList.remove("hidden");
+
+  renderProfile();
+}
+
+function createOrUpdateProfile() {
+  const username = $("profileUsername").value.trim();
+
+  if (username.length < 2) {
+    $("profileFormStatus").textContent =
+      "Kullanıcı adı en az 2 karakter olmalı.";
+    return;
+  }
+
+  if (username.length > 20) {
+    $("profileFormStatus").textContent =
+      "Kullanıcı adı en fazla 20 karakter olabilir.";
+    return;
+  }
+
+  if (!playerProfile) {
+    playerProfile = {
+      id: createProfileId(),
+      username,
+      wins: 0,
+      losses: 0,
+      createdAt: Date.now(),
+      processedMatches: []
+    };
+  } else {
+    playerProfile.username = username;
+  }
+
+  saveProfile();
+  showProfileView();
+}
+
+function createProfileId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return "arti-" + Date.now() + "-" +
+    Math.random().toString(36).slice(2, 10);
+}
+
+function renderProfile() {
+  if (!playerProfile) return;
+
+  const wins = Number(playerProfile.wins) || 0;
+  const losses = Number(playerProfile.losses) || 0;
+  const total = wins + losses;
+  const winRate = total > 0
+    ? (wins / total) * 100
+    : 0;
+
+  $("profileDisplayName").textContent = playerProfile.username;
+  $("profileAvatarLetter").textContent =
+    playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
+
+  $("profileWins").textContent = wins;
+  $("profileLosses").textContent = losses;
+
+  $("profileWinRate").textContent =
+    "%" + winRate.toFixed(1).replace(".", ",");
+
+  $("profileWinRateBar").style.width = winRate + "%";
+}
+
+/* Bir maç tamamlandığında profildeki istatistikleri günceller */
+function recordProfileResult(state, previousState) {
+  if (!playerProfile || !previousState) return;
+
+  if (
+    previousState.status === "finished" ||
+    state.status !== "finished"
+  ) {
+    return;
+  }
+
+  if (state.winner === null || state.winner === undefined) {
+    return;
+  }
+
+  const history = Array.isArray(state.history) ? state.history : [];
+
+  const matchKey = [
+    roomCode,
+    state.winner,
+    JSON.stringify(history)
+  ].join("|");
+
+  playerProfile.processedMatches =
+    Array.isArray(playerProfile.processedMatches)
+      ? playerProfile.processedMatches
+      : [];
+
+  if (playerProfile.processedMatches.includes(matchKey)) {
+    return;
+  }
+
+  playerProfile.processedMatches.push(matchKey);
+
+  if (Number(state.winner) === Number(playerNumber)) {
+    playerProfile.wins = (Number(playerProfile.wins) || 0) + 1;
+  } else {
+    playerProfile.losses = (Number(playerProfile.losses) || 0) + 1;
+  }
+
+  saveProfile();
+
+  if (!$("profileModal").classList.contains("hidden")) {
+    renderProfile();
+  }
+}
+
+/* =========================
+   MEVCUT OYUN SİSTEMİ
+========================= */
 
 function setColor(color) {
   $("color").value = color;
@@ -503,6 +691,9 @@ async function refreshState() {
       saveSession();
     }
 
+    /* Profil istatistiklerini yalnızca maç tamamlandığında güncelle */
+    recordProfileResult(state, previousState);
+
     const previousWasActive =
       previousState &&
       ["playing", "last_chance"].includes(previousState.status);
@@ -911,6 +1102,34 @@ function initializeGame() {
   $("restartBtn").addEventListener("click", requestRestart);
   $("closeEasterEgg").addEventListener("click", closeEasterEgg);
 
+  /* Profil butonları */
+  $("openProfileBtn").addEventListener("click", openProfile);
+  $("closeProfileBtn").addEventListener("click", closeProfile);
+  $("saveProfileBtn").addEventListener("click", createOrUpdateProfile);
+
+  $("editProfileBtn").addEventListener("click", showProfileCreate);
+
+  $("profileUsername").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      createOrUpdateProfile();
+    }
+  });
+
+  $("profileModal").addEventListener("click", event => {
+    if (event.target === $("profileModal")) {
+      closeProfile();
+    }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (
+      event.key === "Escape" &&
+      !$("profileModal").classList.contains("hidden")
+    ) {
+      closeProfile();
+    }
+  });
+
   document.querySelectorAll(".color-choice").forEach(button => {
     button.addEventListener("click", () => {
       setColor(button.dataset.color);
@@ -932,6 +1151,7 @@ function initializeGame() {
   renderMyGuesses();
   renderOwnSecret();
 
+  loadProfile();
   loadSession();
 }
 
