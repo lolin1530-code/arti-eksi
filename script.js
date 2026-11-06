@@ -17,12 +17,43 @@ let turnAudioContext = null;
 let previousTurnKey = "";
 
 let playerProfile = null;
+let friendData = { friends: [], incoming: [], outgoing: [] };
 
 const $ = id => document.getElementById(id);
 
 /* =========================
-   PROFİL SİSTEMİ
+   PROFİL + KURTARMA + ARKADAŞ SİSTEMİ
 ========================= */
+
+function createProfileId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  if (!window.crypto || !window.crypto.getRandomValues) return null;
+
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function createSecureHex(byteCount = 32) {
+  if (!window.crypto || !window.crypto.getRandomValues) return null;
+  const bytes = new Uint8Array(byteCount);
+  window.crypto.getRandomValues(bytes);
+  return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
+}
+
+function saveProfile() {
+  localStorage.setItem("arti_profile", JSON.stringify(playerProfile));
+  updateProfileEntry();
+}
 
 function loadProfile() {
   try {
@@ -31,18 +62,22 @@ function loadProfile() {
     playerProfile = null;
   }
 
-  updateProfileEntry();
-}
+  if (playerProfile) {
+    if (!isUuid(playerProfile.id)) playerProfile.id = createProfileId();
+    if (!playerProfile.token) playerProfile.token = createSecureHex(32);
+    if (!playerProfile.recoveryCode) playerProfile.recoveryCode = createSecureHex(16);
+    if (!Array.isArray(playerProfile.processedMatches)) playerProfile.processedMatches = [];
+    if (typeof playerProfile.synced !== "boolean") playerProfile.synced = false;
+    if (typeof playerProfile.recoverySaved !== "boolean") playerProfile.recoverySaved = false;
+    saveProfile();
+  }
 
-function saveProfile() {
-  localStorage.setItem("arti_profile", JSON.stringify(playerProfile));
   updateProfileEntry();
 }
 
 function updateProfileEntry() {
   const button = $("openProfileBtn");
   const text = $("profileEntryText");
-
   if (!button || !text) return;
 
   if (playerProfile) {
@@ -56,9 +91,15 @@ function updateProfileEntry() {
 
 function openProfile() {
   $("profileModal").classList.remove("hidden");
-
   if (playerProfile) {
     showProfileView();
+    if (projectUrl && apiKey) {
+      syncProfileIfNeeded().then(() => loadFriendData()).catch(error => {
+        $("friendStatus").textContent = error.message;
+      });
+    } else {
+      $("friendStatus").textContent = "Arkadaşlık özellikleri için önce Supabase bağlantısını kur.";
+    }
   } else {
     showProfileCreate();
   }
@@ -71,65 +112,216 @@ function closeProfile() {
 
 function showProfileCreate() {
   $("profileCreateArea").classList.remove("hidden");
+  $("profileRecoveryArea").classList.add("hidden");
   $("profileViewArea").classList.add("hidden");
-
-  $("profileUsername").value = playerProfile
-    ? playerProfile.username
-    : "";
-
+  $("profileUsername").value = playerProfile ? playerProfile.username : "";
   $("profileFormStatus").textContent = "";
+  $("saveProfileBtn").textContent = playerProfile ? "Değişiklikleri Kaydet" : "Profili Oluştur";
+  $("showRecoveryBtn").classList.toggle("hidden", !!playerProfile);
+}
 
-  $("saveProfileBtn").textContent = playerProfile
-    ? "Değişiklikleri Kaydet"
-    : "Profili Oluştur";
+function showRecoveryArea() {
+  $("profileCreateArea").classList.add("hidden");
+  $("profileRecoveryArea").classList.remove("hidden");
+  $("profileViewArea").classList.add("hidden");
+  $("recoveryStatus").textContent = "";
 }
 
 function showProfileView() {
   $("profileCreateArea").classList.add("hidden");
+  $("profileRecoveryArea").classList.add("hidden");
   $("profileViewArea").classList.remove("hidden");
-
   renderProfile();
 }
 
-function createOrUpdateProfile() {
+async function createOrUpdateProfile() {
   const username = $("profileUsername").value.trim();
 
-  if (username.length < 2) {
-    $("profileFormStatus").textContent =
-      "Kullanıcı adı en az 2 karakter olmalı.";
+  if (username.length < 2 || username.length > 20) {
+    $("profileFormStatus").textContent = "Kullanıcı adı 2-20 karakter arasında olmalı.";
+    return;
+  }
+  if (!projectUrl || !apiKey) {
+    $("profileFormStatus").textContent = "Önce Supabase bağlantısını kurmalısın.";
     return;
   }
 
-  if (username.length > 20) {
-    $("profileFormStatus").textContent =
-      "Kullanıcı adı en fazla 20 karakter olabilir.";
-    return;
-  }
+  $("saveProfileBtn").disabled = true;
+  $("profileFormStatus").textContent = "Profil kaydediliyor...";
 
-  if (!playerProfile) {
-    playerProfile = {
-      id: createProfileId(),
-      username,
-      wins: 0,
-      losses: 0,
-      createdAt: Date.now(),
-      processedMatches: []
-    };
-  } else {
-    playerProfile.username = username;
-  }
+  try {
+    if (!playerProfile) {
+      const id = createProfileId();
+      const token = createSecureHex(32);
+      const recoveryCode = createSecureHex(16);
 
-  saveProfile();
-  showProfileView();
+      if (!id || !token || !recoveryCode) {
+        throw new Error("Bu tarayıcı güvenli kod üretimini desteklemiyor. Güncel bir tarayıcı kullan.");
+      }
+
+      const result = await rpc("create_player_profile", {
+        p_id: id,
+        p_username: username,
+        p_token: token,
+        p_wins: 0,
+        p_losses: 0
+      });
+
+      if (result && result.success === false) {
+        throw new Error(result.message || "Profil oluşturulamadı.");
+      }
+
+      playerProfile = {
+        id,
+        token,
+        recoveryCode,
+        username,
+        wins: 0,
+        losses: 0,
+        createdAt: Date.now(),
+        processedMatches: [],
+        synced: true,
+        recoverySaved: false
+      };
+      saveProfile();
+
+      await saveRecoveryCode();
+      await refreshRemoteProfile();
+      showProfileView();
+    } else {
+      const result = await rpc("update_player_username", {
+        p_id: playerProfile.id,
+        p_token: playerProfile.token,
+        p_username: username
+      });
+
+      if (result && result.success === false) {
+        throw new Error(result.message || "Kullanıcı adı değiştirilemedi.");
+      }
+
+      playerProfile.username = username;
+      saveProfile();
+      await refreshRemoteProfile();
+      showProfileView();
+    }
+  } catch (error) {
+    $("profileFormStatus").textContent = error.message;
+  } finally {
+    $("saveProfileBtn").disabled = false;
+  }
 }
 
-function createProfileId() {
-  if (window.crypto && typeof window.crypto.randomUUID === "function") {
-    return window.crypto.randomUUID();
+async function saveRecoveryCode() {
+  if (!playerProfile || !playerProfile.recoveryCode || !projectUrl || !apiKey) return;
+
+  const result = await rpc("set_player_recovery_code", {
+    p_id: playerProfile.id,
+    p_token: playerProfile.token,
+    p_recovery_code: playerProfile.recoveryCode
+  });
+
+  if (result && result.success === false) {
+    throw new Error(result.message || "Kurtarma kodu kaydedilemedi.");
   }
 
-  return "arti-" + Date.now() + "-" +
-    Math.random().toString(36).slice(2, 10);
+  playerProfile.recoverySaved = true;
+  saveProfile();
+}
+
+async function recoverProfile() {
+  const username = $("recoveryUsername").value.trim();
+  const recoveryCode = $("recoveryCodeInput").value.trim().toUpperCase();
+
+  if (!username || !recoveryCode) {
+    $("recoveryStatus").textContent = "Kullanıcı adı ve kurtarma kodunu gir.";
+    return;
+  }
+  if (!projectUrl || !apiKey) {
+    $("recoveryStatus").textContent = "Önce Supabase bağlantısını kurmalısın.";
+    return;
+  }
+
+  $("recoverProfileBtn").disabled = true;
+  $("recoveryStatus").textContent = "Profil aranıyor...";
+
+  try {
+    const result = await rpc("recover_player_profile", {
+      p_username: username,
+      p_recovery_code: recoveryCode
+    });
+
+    if (!result || !result.success) {
+      throw new Error((result && result.message) || "Profil kurtarılamadı.");
+    }
+
+    playerProfile = {
+      id: result.id,
+      username: result.username,
+      wins: Number(result.wins) || 0,
+      losses: Number(result.losses) || 0,
+      token: result.token,
+      recoveryCode,
+      createdAt: Date.now(),
+      processedMatches: [],
+      synced: true,
+      recoverySaved: true
+    };
+
+    saveProfile();
+    await loadFriendData();
+    showProfileView();
+    $("friendStatus").textContent = "Profilin başarıyla geri yüklendi.";
+  } catch (error) {
+    $("recoveryStatus").textContent = error.message;
+  } finally {
+    $("recoverProfileBtn").disabled = false;
+  }
+}
+
+async function syncProfileIfNeeded() {
+  if (!playerProfile || !projectUrl || !apiKey) return;
+
+  if (!playerProfile.id || !playerProfile.token || !playerProfile.recoveryCode) {
+    throw new Error("Profil güvenlik bilgileri eksik. Kurtarma kodunla profilini geri yüklemeyi dene.");
+  }
+
+  if (!playerProfile.synced) {
+    const result = await rpc("create_player_profile", {
+      p_id: playerProfile.id,
+      p_username: playerProfile.username,
+      p_token: playerProfile.token,
+      p_wins: Number(playerProfile.wins) || 0,
+      p_losses: Number(playerProfile.losses) || 0
+    });
+
+    if (result && result.success === false) {
+      throw new Error(result.message || "Profil sunucuya aktarılamadı.");
+    }
+    playerProfile.synced = true;
+    saveProfile();
+  }
+
+  if (!playerProfile.recoverySaved) {
+    await saveRecoveryCode();
+  }
+
+  await refreshRemoteProfile();
+}
+
+async function refreshRemoteProfile() {
+  if (!playerProfile || !playerProfile.synced) return;
+
+  const result = await rpc("get_player_profile", { p_id: playerProfile.id });
+  if (result) {
+    const profile = Array.isArray(result) ? result[0] : result;
+    if (profile) {
+      playerProfile.username = profile.username || playerProfile.username;
+      playerProfile.wins = Number(profile.wins) || 0;
+      playerProfile.losses = Number(profile.losses) || 0;
+      saveProfile();
+      if (!$("profileModal").classList.contains("hidden")) renderProfile();
+    }
+  }
 }
 
 function renderProfile() {
@@ -138,67 +330,280 @@ function renderProfile() {
   const wins = Number(playerProfile.wins) || 0;
   const losses = Number(playerProfile.losses) || 0;
   const total = wins + losses;
-  const winRate = total > 0
-    ? (wins / total) * 100
-    : 0;
+  const winRate = total > 0 ? (wins / total) * 100 : 0;
 
   $("profileDisplayName").textContent = playerProfile.username;
-  $("profileAvatarLetter").textContent =
-    playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
-
+  $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
   $("profileWins").textContent = wins;
   $("profileLosses").textContent = losses;
-
-  $("profileWinRate").textContent =
-    "%" + winRate.toFixed(1).replace(".", ",");
-
+  $("profileWinRate").textContent = "%" + winRate.toFixed(1).replace(".", ",");
   $("profileWinRateBar").style.width = winRate + "%";
+  $("recoveryCodeDisplay").textContent = playerProfile.recoveryCode || "Kurtarma kodu bulunamadı";
+  $("recoveryCodeStatus").textContent = playerProfile.recoverySaved
+    ? "Kurtarma kodun sunucuya kaydedildi. Güvenli bir yere kopyala."
+    : "Kurtarma kodunun sunucuya kaydedilmesi bekleniyor.";
 }
 
-/* Bir maç tamamlandığında profildeki istatistikleri günceller */
-function recordProfileResult(state, previousState) {
-  if (!playerProfile || !previousState) return;
-
-  if (
-    previousState.status === "finished" ||
-    state.status !== "finished"
-  ) {
-    return;
+async function copyRecoveryCode() {
+  if (!playerProfile || !playerProfile.recoveryCode) return;
+  try {
+    await navigator.clipboard.writeText(playerProfile.recoveryCode);
+    $("recoveryCodeStatus").textContent = "Kurtarma kodu kopyalandı.";
+  } catch {
+    $("recoveryCodeStatus").textContent = "Kodu seçip elle kopyalayabilirsin.";
   }
+}
 
-  if (state.winner === null || state.winner === undefined) {
-    return;
-  }
+/* Maç sonucunu sunucuya bir kez kaydeder; iki oyuncu için ayrı profil kaydı tutulur. */
+async function recordProfileResult(state, previousState) {
+  if (!playerProfile || !playerProfile.synced || !previousState) return;
+
+  if (previousState.status === "finished" || state.status !== "finished") return;
+  if (state.winner === null || state.winner === undefined) return;
 
   const history = Array.isArray(state.history) ? state.history : [];
+  const matchKey = [roomCode, state.winner, JSON.stringify(history)].join("|");
 
-  const matchKey = [
-    roomCode,
-    state.winner,
-    JSON.stringify(history)
-  ].join("|");
+  playerProfile.processedMatches = Array.isArray(playerProfile.processedMatches)
+    ? playerProfile.processedMatches : [];
 
-  playerProfile.processedMatches =
-    Array.isArray(playerProfile.processedMatches)
-      ? playerProfile.processedMatches
-      : [];
+  if (playerProfile.processedMatches.includes(matchKey)) return;
 
-  if (playerProfile.processedMatches.includes(matchKey)) {
+  playerProfile.processedMatches.push(matchKey);
+  saveProfile();
+
+  const won = Number(state.winner) === Number(playerNumber);
+
+  try {
+    const result = await rpc("record_profile_result", {
+      p_id: playerProfile.id,
+      p_token: playerProfile.token,
+      p_match_key: matchKey,
+      p_won: won
+    });
+
+    if (result && result.success === false) {
+      playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
+      saveProfile();
+      throw new Error(result.message || "Maç sonucu kaydedilemedi.");
+    }
+
+    await refreshRemoteProfile();
+  } catch (error) {
+    console.error("Profil maç sonucu kaydedilemedi:", error);
+    playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
+    saveProfile();
+  }
+}
+
+/* Arkadaş arama ve istekler */
+async function searchPlayer() {
+  const username = $("friendSearchInput").value.trim();
+  $("friendSearchResults").innerHTML = "";
+  $("friendStatus").textContent = "";
+
+  if (username.length < 2) {
+    $("friendStatus").textContent = "Aramak için en az 2 karakter gir.";
+    return;
+  }
+  if (!playerProfile || !playerProfile.synced) {
+    $("friendStatus").textContent = "Önce profilini oluşturup sunucuya kaydet.";
     return;
   }
 
-  playerProfile.processedMatches.push(matchKey);
+  $("friendSearchBtn").disabled = true;
+  try {
+    const results = await rpc("search_player", { p_username: username });
+    const list = Array.isArray(results) ? results : (results ? [results] : []);
+    const filtered = list.filter(item => item.id !== playerProfile.id);
 
-  if (Number(state.winner) === Number(playerNumber)) {
-    playerProfile.wins = (Number(playerProfile.wins) || 0) + 1;
+    if (!filtered.length) {
+      $("friendSearchResults").innerHTML = '<p class="friend-empty">Kullanıcı bulunamadı.</p>';
+      return;
+    }
+
+    filtered.forEach(item => {
+      const alreadyFriend = friendData.friends.some(friend =>
+        getFriendId(friend) === item.id
+      );
+      const requestSent = friendData.outgoing.some(request =>
+        getRequestTargetId(request) === item.id
+      );
+      const card = createFriendCard(
+        item.username,
+        `Galibiyet: ${Number(item.wins) || 0} · Mağlubiyet: ${Number(item.losses) || 0}`,
+        alreadyFriend ? "Arkadaşsınız" : requestSent ? "İstek gönderildi" : "İstek Gönder",
+        alreadyFriend || requestSent ? null : () => sendFriendRequest(item.id)
+      );
+      $("friendSearchResults").appendChild(card);
+    });
+  } catch (error) {
+    $("friendStatus").textContent = error.message;
+  } finally {
+    $("friendSearchBtn").disabled = false;
+  }
+}
+
+function getFriendId(item) {
+  return item.profile_id || item.friend_id || item.id || item.user_id || "";
+}
+function getRequestTargetId(item) {
+  return item.receiver_id || item.target_id || item.profile_id || "";
+}
+
+function getRequestId(item) {
+  return item.request_id || item.id || "";
+}
+
+function getRequestUsername(item) {
+  return item.username || item.requester_username || item.receiver_username || "Oyuncu";
+}
+
+function createFriendCard(username, stats, actionLabel, action) {
+  const card = document.createElement("div");
+  card.className = "friend-card";
+
+  const main = document.createElement("div");
+  main.className = "friend-card-main";
+
+  const name = document.createElement("div");
+  name.className = "friend-card-name";
+  name.textContent = username || "Oyuncu";
+
+  const detail = document.createElement("div");
+  detail.className = "friend-card-stats";
+  detail.textContent = stats || "";
+
+  main.append(name, detail);
+  card.appendChild(main);
+
+  if (actionLabel) {
+    const actions = document.createElement("div");
+    actions.className = "friend-card-actions";
+    const button = document.createElement("button");
+    button.textContent = actionLabel;
+    button.className = "friend-add";
+    if (action) button.addEventListener("click", action);
+    else button.disabled = true;
+    actions.appendChild(button);
+    card.appendChild(actions);
+  }
+  return card;
+}
+
+async function sendFriendRequest(targetId) {
+  try {
+    const result = await rpc("send_friend_request", {
+      p_id: playerProfile.id,
+      p_token: playerProfile.token,
+      p_target: targetId
+    });
+    if (result && result.success === false) throw new Error(result.message || "İstek gönderilemedi.");
+    $("friendStatus").textContent = "Arkadaşlık isteği gönderildi.";
+    await loadFriendData();
+    await searchPlayer();
+  } catch (error) {
+    $("friendStatus").textContent = error.message;
+  }
+}
+
+async function respondFriendRequest(requestId, accept) {
+  try {
+    const result = await rpc("respond_friend_request", {
+      p_id: playerProfile.id,
+      p_token: playerProfile.token,
+      p_request_id: requestId,
+      p_accept: accept
+    });
+    if (result && result.success === false) throw new Error(result.message || "İstek güncellenemedi.");
+    $("friendStatus").textContent = accept ? "Arkadaşlık isteği kabul edildi." : "İstek reddedildi.";
+    await loadFriendData();
+  } catch (error) {
+    $("friendStatus").textContent = error.message;
+  }
+}
+
+async function loadFriendData() {
+  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
+
+  try {
+    const result = await rpc("get_friend_data", {
+      p_id: playerProfile.id,
+      p_token: playerProfile.token
+    });
+
+    friendData = {
+      friends: Array.isArray(result.friends) ? result.friends : [],
+      incoming: Array.isArray(result.incoming) ? result.incoming : [],
+      outgoing: Array.isArray(result.outgoing) ? result.outgoing : []
+    };
+
+    renderFriendData();
+  } catch (error) {
+    $("friendStatus").textContent = error.message;
+  }
+}
+
+function renderFriendData() {
+  const requests = $("friendRequestsList");
+  const friends = $("friendsList");
+  requests.innerHTML = "";
+  friends.innerHTML = "";
+
+  if (!friendData.incoming.length && !friendData.outgoing.length) {
+    requests.innerHTML = '<p class="friend-empty">Bekleyen arkadaşlık isteği yok.</p>';
   } else {
-    playerProfile.losses = (Number(playerProfile.losses) || 0) + 1;
+    friendData.incoming.forEach(item => {
+      const card = createFriendCard(
+        getRequestUsername(item),
+        "Sana arkadaşlık isteği gönderdi.",
+        null,
+        null
+      );
+      const actions = document.createElement("div");
+      actions.className = "friend-card-actions";
+
+      const accept = document.createElement("button");
+      accept.className = "friend-accept";
+      accept.textContent = "Kabul Et";
+      accept.addEventListener("click", () => respondFriendRequest(getRequestId(item), true));
+
+      const reject = document.createElement("button");
+      reject.className = "friend-reject";
+      reject.textContent = "Reddet";
+      reject.addEventListener("click", () => respondFriendRequest(getRequestId(item), false));
+
+      actions.append(accept, reject);
+      card.appendChild(actions);
+      requests.appendChild(card);
+    });
+
+    friendData.outgoing.forEach(item => {
+      requests.appendChild(createFriendCard(
+        getRequestUsername(item),
+        "Gönderdiğin istek yanıt bekliyor.",
+        "Bekliyor",
+        null
+      ));
+    });
   }
 
-  saveProfile();
-
-  if (!$("profileModal").classList.contains("hidden")) {
-    renderProfile();
+  if (!friendData.friends.length) {
+    friends.innerHTML = '<p class="friend-empty">Henüz arkadaşın yok.</p>';
+  } else {
+    friendData.friends.forEach(item => {
+      const username = item.username || item.friend_username || "Oyuncu";
+      const wins = Number(item.wins) || 0;
+      const losses = Number(item.losses) || 0;
+      const total = wins + losses;
+      const rate = total ? ((wins / total) * 100).toFixed(1).replace(".", ",") : "0";
+      friends.appendChild(createFriendCard(
+        username,
+        `Galibiyet: ${wins} · Mağlubiyet: ${losses} · Başarı: %${rate}`,
+        null,
+        null
+      ));
+    });
   }
 }
 
@@ -208,88 +613,60 @@ function recordProfileResult(state, previousState) {
 
 function setColor(color) {
   $("color").value = color;
-
   document.querySelectorAll(".color-choice").forEach(button => {
     const selected = button.dataset.color === color;
-
     button.classList.toggle("active", selected);
     button.style.outline = selected ? "4px solid white" : "none";
     button.style.filter = selected ? "brightness(1.15)" : "brightness(0.8)";
   });
 }
 
-/* Üst durum kutusunu yönetir */
 function setTurnMessage(message, color = "") {
   const turn = $("turn");
   const panel = $("turnPanel");
-
   if (!turn || !panel) return;
-
   if (!message) {
     panel.classList.add("hidden");
     turn.textContent = "";
     return;
   }
-
   turn.textContent = message;
   turn.style.color = color || "#f1f3f8";
   panel.classList.remove("hidden");
 }
 
-/* Ses sistemini tarayıcı etkileşimiyle açar */
 function enableTurnAudio() {
-  const AudioContextClass =
-    window.AudioContext || window.webkitAudioContext;
-
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return;
-
-  if (!turnAudioContext) {
-    turnAudioContext = new AudioContextClass();
-  }
-
-  if (turnAudioContext.state === "suspended") {
-    turnAudioContext.resume().catch(() => {});
-  }
+  if (!turnAudioContext) turnAudioContext = new AudioContextClass();
+  if (turnAudioContext.state === "suspended") turnAudioContext.resume().catch(() => {});
 }
 
-/* Sıra sana geldiğinde kısa ve hafif bir ses */
 function playTurnSound() {
   if (!turnAudioContext) return;
-
   const play = () => {
     if (!turnAudioContext) return;
-
     const oscillator = turnAudioContext.createOscillator();
     const gain = turnAudioContext.createGain();
-
     const now = turnAudioContext.currentTime;
-
     oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(660, now);
     oscillator.frequency.setValueAtTime(880, now + 0.08);
-
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.linearRampToValueAtTime(0.15, now + 0.025);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-
     oscillator.connect(gain);
     gain.connect(turnAudioContext.destination);
-
     oscillator.start(now);
     oscillator.stop(now + 0.23);
   };
-
-  if (turnAudioContext.state === "suspended") {
-    turnAudioContext.resume().then(play).catch(() => {});
-  } else {
-    play();
-  }
+  if (turnAudioContext.state === "suspended") turnAudioContext.resume().then(play).catch(() => {});
+  else play();
 }
 
 function setCoinMessage(message) {
   const coin = $("coin");
   if (!coin) return;
-
   coin.textContent = message;
 }
 
@@ -298,7 +675,6 @@ function clearStartMessage() {
     clearTimeout(startMessageTimer);
     startMessageTimer = null;
   }
-
   startMessageShown = true;
 }
 
@@ -307,17 +683,12 @@ function resetStartMessage() {
     clearTimeout(startMessageTimer);
     startMessageTimer = null;
   }
-
   startMessageShown = false;
 }
 
 function saveSession() {
   localStorage.setItem("arti_session", JSON.stringify({
-    projectUrl,
-    apiKey,
-    playerToken,
-    playerNumber,
-    roomCode
+    projectUrl, apiKey, playerToken, playerNumber, roomCode
   }));
 }
 
@@ -342,43 +713,32 @@ function saveOwnSecret() {
 
 function loadOwnSecret() {
   ownSecret = localStorage.getItem("arti_secret_" + playerToken) || "";
-
   $("secret").value = ownSecret;
   $("secret").disabled = !!ownSecret;
   $("lockBtn").disabled = !!ownSecret;
-
   renderOwnSecret();
 }
 
 function clearRoundData() {
   resetStartMessage();
-
   ownSecret = "";
   notes = [];
   numberMarks = {};
-
   previousTurnKey = "";
-
   localStorage.removeItem("arti_secret_" + playerToken);
-
   saveNotes();
-
   $("secret").value = "";
   $("secret").disabled = false;
   $("lockBtn").disabled = false;
   $("secretStatus").textContent = "Yeni sayını belirle.";
-
   $("guess").value = "";
   $("feedback").textContent = "Yeni oyun başladı.";
   $("guessBtn").disabled = true;
-
   $("restartStatus").classList.add("hidden");
   $("gameResultBar").classList.add("hidden");
   $("restartBtn").classList.remove("hidden");
-
   setCoinMessage("");
   setTurnMessage("");
-
   renderOwnSecret();
   renderMyGuesses();
   renderNumberBoard();
@@ -406,12 +766,13 @@ async function rpc(name, params = {}) {
     body: JSON.stringify(params)
   });
 
-  const result = await response.json();
+  let result;
+  try { result = await response.json(); }
+  catch { result = {}; }
 
   if (!response.ok) {
-    throw new Error(result.message || result.details || "Bağlantı hatası");
+    throw new Error(result.message || result.details || result.hint || "Bağlantı hatası");
   }
-
   return result;
 }
 
@@ -428,9 +789,7 @@ async function connect() {
   localStorage.setItem("arti_key", apiKey);
 
   try {
-    await rpc("get_game_state", {
-      p_token: "00000000-0000-0000-0000-000000000000"
-    });
+    await rpc("get_game_state", { p_token: "00000000-0000-0000-0000-000000000000" });
   } catch (error) {
     if (error.message.includes("Failed to fetch")) {
       $("connectionStatus").textContent = "Sunucuya ulaşılamadı.";
@@ -439,35 +798,37 @@ async function connect() {
   }
 
   $("connectionStatus").textContent = "Supabase bağlantısı hazır.";
+
+  if (playerProfile) {
+    try {
+      await syncProfileIfNeeded();
+      $("connectionStatus").textContent = "Supabase bağlantısı hazır. Profilin eşitlendi.";
+      if (!$("profileModal").classList.contains("hidden")) await loadFriendData();
+    } catch (error) {
+      $("connectionStatus").textContent = "Bağlantı hazır; profil eşitlenemedi: " + error.message;
+    }
+  }
 }
 
 async function createRoom() {
   try {
     const result = await rpc("create_room");
-
     playerToken = result.token || result.player_token;
     playerNumber = 1;
     roomCode = result.room_code;
-
-    if (!playerToken || !roomCode) {
-      throw new Error("Oda bilgileri alınamadı.");
-    }
-
+    if (!playerToken || !roomCode) throw new Error("Oda bilgileri alınamadı.");
     notes = [];
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
     previousTurnKey = "";
-
     gameState = null;
     resetStartMessage();
-
     saveSession();
     loadNotes();
     loadOwnSecret();
     showGameScreen();
     startPolling();
-
     $("roomStatus").textContent = "Oda oluşturuldu: " + roomCode;
   } catch (error) {
     $("roomStatus").textContent = error.message;
@@ -477,36 +838,24 @@ async function createRoom() {
 async function joinRoom() {
   try {
     const code = $("roomCode").value.trim().toUpperCase();
-
     if (!code) throw new Error("Oda kodunu gir.");
-
-    const result = await rpc("join_room", {
-      p_room_code: code
-    });
-
+    const result = await rpc("join_room", { p_room_code: code });
     playerToken = result.token || result.player_token;
     playerNumber = 2;
     roomCode = result.room_code || code;
-
-    if (!playerToken) {
-      throw new Error("Oyuncu bilgisi alınamadı.");
-    }
-
+    if (!playerToken) throw new Error("Oyuncu bilgisi alınamadı.");
     notes = [];
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
     previousTurnKey = "";
-
     gameState = null;
     resetStartMessage();
-
     saveSession();
     loadNotes();
     loadOwnSecret();
     showGameScreen();
     startPolling();
-
     $("roomStatus").textContent = "Odaya katıldın.";
   } catch (error) {
     $("roomStatus").textContent = error.message;
@@ -515,77 +864,41 @@ async function joinRoom() {
 
 async function lockSecret() {
   const secret = $("secret").value.trim();
-
   if (!/^[1-9][0-9]{3}$/.test(secret) || new Set(secret).size !== 4) {
-    $("secretStatus").textContent =
-      "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
+    $("secretStatus").textContent = "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
     return;
   }
-
   try {
-    await rpc("lock_secret", {
-      p_token: playerToken,
-      p_secret: secret
-    });
-
+    await rpc("lock_secret", { p_token: playerToken, p_secret: secret });
     ownSecret = secret;
     saveOwnSecret();
     renderOwnSecret();
-
     $("secretStatus").textContent = "Sayın kilitlendi.";
     $("secret").disabled = true;
     $("lockBtn").disabled = true;
-
-    if (secret === "8041") {
-      showEasterEgg();
-    }
-
+    if (secret === "8041") showEasterEgg();
     await refreshState();
   } catch (error) {
     $("secretStatus").textContent = error.message;
   }
 }
 
-function showEasterEgg() {
-  $("easterEgg").classList.remove("hidden");
-}
-
-function closeEasterEgg() {
-  $("easterEgg").classList.add("hidden");
-}
+function showEasterEgg() { $("easterEgg").classList.remove("hidden"); }
+function closeEasterEgg() { $("easterEgg").classList.add("hidden"); }
 
 async function submitGuess() {
   const guess = $("guess").value.trim();
-
   if (!/^[1-9][0-9]{3}$/.test(guess) || new Set(guess).size !== 4) {
-    $("feedback").textContent =
-      "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
+    $("feedback").textContent = "Dört farklı rakam gir. İlk rakam sıfır olamaz.";
     return;
   }
-
   try {
-    const result = await rpc("submit_guess", {
-      p_token: playerToken,
-      p_guess: guess
-    });
-
-    notes.push({
-      guess,
-      plus: result.plus,
-      minus: result.minus,
-      marks: {}
-    });
-
+    const result = await rpc("submit_guess", { p_token: playerToken, p_guess: guess });
+    notes.push({ guess, plus: result.plus, minus: result.minus, marks: {} });
     saveNotes();
-
     $("guess").value = "";
-
-    $("feedback").textContent =
-      "+" + result.plus + " doğru konum · -" +
-      result.minus + " yanlış konum";
-
+    $("feedback").textContent = "+" + result.plus + " doğru konum · -" + result.minus + " yanlış konum";
     await refreshState();
-
   } catch (error) {
     $("feedback").textContent = error.message;
   }
@@ -598,25 +911,17 @@ function hideGameResult() {
 
 async function updateRestartStatus() {
   try {
-    const result = await rpc("get_restart_status", {
-      p_token: playerToken
-    });
-
+    const result = await rpc("get_restart_status", { p_token: playerToken });
     if (result.me) {
       $("restartBtn").disabled = true;
       $("restartBtn").textContent = "İSTEK GÖNDERİLDİ";
-
-      $("restartStatus").textContent =
-        "Rakibin de tekrar oynamasını bekliyorsun.";
-
+      $("restartStatus").textContent = "Rakibin de tekrar oynamasını bekliyorsun.";
       $("restartStatus").classList.remove("hidden");
     } else {
       $("restartBtn").disabled = false;
       $("restartBtn").textContent = "TEKRAR OYNA";
-
       $("restartStatus").classList.add("hidden");
     }
-
   } catch (error) {
     $("restartStatus").textContent = error.message;
     $("restartStatus").classList.remove("hidden");
@@ -625,25 +930,18 @@ async function updateRestartStatus() {
 
 async function requestRestart() {
   if (!gameState || gameState.status !== "finished") return;
-
   $("restartBtn").disabled = true;
   $("restartBtn").textContent = "BEKLE...";
-
   try {
-    const result = await rpc("request_restart", {
-      p_token: playerToken
-    });
-
+    const result = await rpc("request_restart", { p_token: playerToken });
     if (result.restarted) {
       $("restartStatus").textContent = "Yeni oyun hazırlanıyor.";
       await refreshState();
     } else {
       $("restartBtn").textContent = "İSTEK GÖNDERİLDİ";
-      $("restartStatus").textContent =
-        "Rakibin de tekrar oynamasını bekliyorsun.";
+      $("restartStatus").textContent = "Rakibin de tekrar oynamasını bekliyorsun.";
       $("restartStatus").classList.remove("hidden");
     }
-
   } catch (error) {
     $("restartBtn").disabled = false;
     $("restartBtn").textContent = "TEKRAR OYNA";
@@ -654,36 +952,23 @@ async function requestRestart() {
 
 function showStartingPlayerMessage() {
   if (!gameState || gameState.status !== "playing") return;
-
   const history = Array.isArray(gameState.history) ? gameState.history : [];
-
   if (history.length > 0) {
     clearStartMessage();
     setTurnMessage("");
     return;
   }
-
   const currentTurn = Number(gameState.turn);
-
-  if (currentTurn === playerNumber) {
-    setTurnMessage("Tahmine Başla", "#27c982");
-  } else {
-    setTurnMessage("Rakip Tahmine Başlıyor", "#ff5364");
-  }
-
+  if (currentTurn === playerNumber) setTurnMessage("Tahmine Başla", "#27c982");
+  else setTurnMessage("Rakip Tahmine Başlıyor", "#ff5364");
   startMessageShown = true;
 }
 
 async function refreshState() {
   if (!playerToken) return;
-
   try {
     const previousState = gameState;
-
-    const state = await rpc("get_game_state", {
-      p_token: playerToken
-    });
-
+    const state = await rpc("get_game_state", { p_token: playerToken });
     gameState = state;
 
     if (state.player !== undefined && state.player !== null) {
@@ -691,76 +976,41 @@ async function refreshState() {
       saveSession();
     }
 
-    /* Profil istatistiklerini yalnızca maç tamamlandığında güncelle */
-    recordProfileResult(state, previousState);
+    if (previousState) await recordProfileResult(state, previousState);
 
-    const previousWasActive =
-      previousState &&
-      ["playing", "last_chance"].includes(previousState.status);
+    const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
+    const previousWasMyTurn = previousWasActive && Number(previousState.turn) === Number(playerNumber);
+    const currentIsMyTurn = ["playing", "last_chance"].includes(state.status) && Number(state.turn) === Number(playerNumber);
+    const gameJustStartedOnMyTurn = previousState && previousState.status === "waiting" && state.status === "playing" && currentIsMyTurn;
+    const turnPassedToMe = previousWasActive && !previousWasMyTurn && currentIsMyTurn;
 
-    const previousWasMyTurn =
-      previousWasActive &&
-      Number(previousState.turn) === Number(playerNumber);
-
-    const currentIsMyTurn =
-      ["playing", "last_chance"].includes(state.status) &&
-      Number(state.turn) === Number(playerNumber);
-
-    const gameJustStartedOnMyTurn =
-      previousState &&
-      previousState.status === "waiting" &&
-      state.status === "playing" &&
-      currentIsMyTurn;
-
-    const turnPassedToMe =
-      previousWasActive &&
-      !previousWasMyTurn &&
-      currentIsMyTurn;
-
-    if (gameJustStartedOnMyTurn || turnPassedToMe) {
-      playTurnSound();
-    }
+    if (gameJustStartedOnMyTurn || turnPassedToMe) playTurnSound();
 
     roomCode = state.room_code || roomCode;
-
     $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
 
-    if (lastStatus === "finished" && state.status === "waiting") {
-      clearRoundData();
-    }
+    if (lastStatus === "finished" && state.status === "waiting") clearRoundData();
 
     const history = Array.isArray(state.history) ? state.history : [];
 
     if (state.status === "waiting") {
       resetStartMessage();
-
       $("guessBtn").disabled = true;
       hideGameResult();
       setCoinMessage("");
 
-      if (!state.opponent_joined) {
-        setTurnMessage("Rakip Bekleniyor", "#ff5364");
-      } else if (!ownSecret && !state.opponent_locked) {
-        setTurnMessage("İki Oyuncunun da Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
-      } else if (ownSecret && !state.opponent_locked) {
-        setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
-      } else if (!ownSecret && state.opponent_locked) {
-        setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
-      } else {
-        setTurnMessage(
-          "İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere",
-          "#27c982"
-        );
-      }
+      if (!state.opponent_joined) setTurnMessage("Rakip Bekleniyor", "#ff5364");
+      else if (!ownSecret && !state.opponent_locked) setTurnMessage("İki Oyuncunun da Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
+      else if (ownSecret && !state.opponent_locked) setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
+      else if (!ownSecret && state.opponent_locked) setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
+      else setTurnMessage("İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere", "#27c982");
 
       if (!ownSecret) {
         $("secret").disabled = false;
         $("lockBtn").disabled = false;
       }
-
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
-
       $("guessBtn").disabled = !myTurn || !ownSecret;
       hideGameResult();
       setCoinMessage("");
@@ -770,33 +1020,21 @@ async function refreshState() {
         setTurnMessage("");
       } else {
         if (!startMessageShown && !startMessageTimer) {
-          setTurnMessage(
-            "İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere",
-            "#27c982"
-          );
-
+          setTurnMessage("İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere", "#27c982");
           startMessageTimer = setTimeout(() => {
             startMessageTimer = null;
             showStartingPlayerMessage();
           }, 1500);
-        } else if (startMessageShown) {
-          showStartingPlayerMessage();
-        }
+        } else if (startMessageShown) showStartingPlayerMessage();
       }
-
     } else if (state.status === "last_chance") {
       clearStartMessage();
-
       const myTurn = Number(state.turn) === playerNumber;
-
       $("guessBtn").disabled = !myTurn || !ownSecret;
-
       $("gameResultBar").classList.remove("hidden");
       $("restartStatus").classList.add("hidden");
       $("restartBtn").classList.add("hidden");
-
       setTurnMessage("");
-
       if (myTurn) {
         $("gameResultText").textContent = "SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
@@ -804,16 +1042,12 @@ async function refreshState() {
         $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
       }
-
     } else if (state.status === "finished") {
       clearStartMessage();
-
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
       $("restartBtn").classList.remove("hidden");
-
       setTurnMessage("");
-
       if (state.winner === null || state.winner === undefined) {
         $("gameResultText").textContent = "BERABERE!";
         $("gameResultText").style.color = "#e8c34d";
@@ -824,9 +1058,7 @@ async function refreshState() {
         $("gameResultText").textContent = "KAYBETTİN!";
         $("gameResultText").style.color = "#ff5364";
       }
-
       await updateRestartStatus();
-
     } else {
       clearStartMessage();
       $("guessBtn").disabled = true;
@@ -835,52 +1067,37 @@ async function refreshState() {
     }
 
     lastStatus = state.status;
-
-    if (Array.isArray(state.history)) {
-      renderOpponentGuesses(state.history);
-    }
-
+    if (Array.isArray(state.history)) renderOpponentGuesses(state.history);
     renderMyGuesses();
     renderTurnIndicator();
-
   } catch (error) {
     setTurnMessage(error.message, "#ff5364");
   }
 }
 
-function renderOwnSecret() {
-  $("mySecretDisplay").textContent = ownSecret || "----";
-}
+function renderOwnSecret() { $("mySecretDisplay").textContent = ownSecret || "----"; }
 
 function renderOpponentGuesses(history) {
   const list = $("opponentGuesses");
   list.innerHTML = "";
-
-  const opponentHistory = history.filter(
-    item => Number(item.player) !== playerNumber
-  );
-
+  const opponentHistory = history.filter(item => Number(item.player) !== playerNumber);
   if (opponentHistory.length === 0) {
     list.textContent = "Henüz tahmin yok.";
     return;
   }
-
   opponentHistory.forEach(item => {
     const row = document.createElement("div");
     row.className = "guess-row";
-
     for (const digit of item.guess) {
       const cell = document.createElement("div");
       cell.className = "guess-digit";
       cell.textContent = digit;
       row.appendChild(cell);
     }
-
     const result = document.createElement("div");
     result.textContent = "+" + item.plus + " / -" + item.minus;
     result.style.fontSize = "11px";
     result.style.color = "#aab6cc";
-
     list.appendChild(row);
     list.appendChild(result);
   });
@@ -889,61 +1106,41 @@ function renderOpponentGuesses(history) {
 function renderMyGuesses() {
   const list = $("myGuesses");
   list.innerHTML = "";
-
   if (notes.length === 0) {
     list.textContent = "Henüz tahmin yok.";
   } else {
     notes.forEach(item => {
       const row = document.createElement("div");
       row.className = "guess-row";
-
       for (let i = 0; i < 4; i++) {
         const cell = document.createElement("button");
         cell.className = "guess-digit";
-
         const mark = item.marks && item.marks[i];
-
-        if (mark) {
-          cell.classList.add(mark);
-        }
-
+        if (mark) cell.classList.add(mark);
         cell.textContent = item.guess[i];
-
         cell.onclick = () => {
           const color = $("color").value;
           item.marks = item.marks || {};
-
-          if (item.marks[i] === color) {
-            delete item.marks[i];
-          } else {
-            item.marks[i] = color;
-          }
-
+          if (item.marks[i] === color) delete item.marks[i];
+          else item.marks[i] = color;
           saveNotes();
           renderMyGuesses();
           renderTurnIndicator();
         };
-
         row.appendChild(cell);
       }
-
       const result = document.createElement("div");
       result.textContent = "+" + item.plus + " / -" + item.minus;
       result.style.fontSize = "11px";
       result.style.color = "#aab6cc";
-
       list.appendChild(row);
       list.appendChild(result);
     });
   }
 }
 
-/* Sıra mesajı: harfleri dalga şeklinde oluşturur */
 function renderTurnIndicator() {
-  if (
-    !gameState ||
-    !["playing", "last_chance"].includes(gameState.status)
-  ) {
+  if (!gameState || !["playing", "last_chance"].includes(gameState.status)) {
     document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
     previousTurnKey = "";
     return;
@@ -951,94 +1148,56 @@ function renderTurnIndicator() {
 
   const myTurn = Number(gameState.turn) === Number(playerNumber);
   const target = $(myTurn ? "myGuesses" : "opponentGuesses");
-
   if (!target) return;
 
-  const messageText = myTurn
-    ? "Tahminin Bekleniyor..."
-    : "Rakip Tahmin Yapıyor...";
-
+  const messageText = myTurn ? "Tahminin Bekleniyor..." : "Rakip Tahmin Yapıyor...";
   const turnKey = gameState.status + ":" + gameState.turn;
-
   const existing = document.querySelector(".guess-turn-message");
 
-  if (
-    existing &&
-    existing.parentElement === target &&
-    existing.dataset.turnKey === turnKey
-  ) {
-    return;
-  }
-
+  if (existing && existing.parentElement === target && existing.dataset.turnKey === turnKey) return;
   document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
 
   const message = document.createElement("div");
-
-  message.className =
-    "guess-turn-message " +
-    (myTurn ? "my-turn" : "opponent-turn") +
-    " turn-arrived";
-
+  message.className = "guess-turn-message " + (myTurn ? "my-turn" : "opponent-turn") + " turn-arrived";
   message.dataset.turnKey = turnKey;
 
   [...messageText].forEach((character, index) => {
     const letter = document.createElement("span");
-
     letter.textContent = character === " " ? "\u00A0" : character;
     letter.style.animationDelay = (index * 0.055) + "s";
-
     message.appendChild(letter);
   });
-
   target.appendChild(message);
-
   previousTurnKey = turnKey;
 }
 
 function renderNumberBoard() {
   const board = $("numberBoard");
   board.innerHTML = "";
-
   for (let i = 0; i <= 9; i++) {
     const button = document.createElement("button");
     button.className = "digit";
     button.textContent = i;
-
-    if (numberMarks[i]) {
-      button.classList.add(numberMarks[i]);
-    }
-
+    if (numberMarks[i]) button.classList.add(numberMarks[i]);
     button.onclick = () => {
       const color = $("color").value;
-
       if (color === "yellow") {
-        $("feedback").textContent =
-          "Rakam tahtasında kırmızı veya yeşil kullanabilirsin.";
+        $("feedback").textContent = "Rakam tahtasında kırmızı veya yeşil kullanabilirsin.";
         return;
       }
-
-      if (numberMarks[i] === color) {
-        delete numberMarks[i];
-      } else {
-        numberMarks[i] = color;
-      }
-
+      if (numberMarks[i] === color) delete numberMarks[i];
+      else numberMarks[i] = color;
       saveNotes();
       renderNumberBoard();
     };
-
     board.appendChild(button);
   }
 }
 
 function resetNotes() {
-  if (!confirm("Bütün kişisel işaretlemelerin silinsin mi?")) {
-    return;
-  }
-
+  if (!confirm("Bütün kişisel işaretlemelerin silinsin mi?")) return;
   notes.forEach(item => item.marks = {});
   numberMarks = {};
-
   saveNotes();
   renderMyGuesses();
   renderTurnIndicator();
@@ -1046,10 +1205,7 @@ function resetNotes() {
 }
 
 function startPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-  }
-
+  if (pollTimer) clearInterval(pollTimer);
   refreshState();
   pollTimer = setInterval(refreshState, 2500);
 }
@@ -1057,23 +1213,19 @@ function startPolling() {
 function loadSession() {
   projectUrl = localStorage.getItem("arti_url") || "";
   apiKey = localStorage.getItem("arti_key") || "";
-
   $("projectUrl").value = projectUrl;
   $("apiKey").value = apiKey;
 
   try {
     const saved = JSON.parse(localStorage.getItem("arti_session"));
-
     if (saved && saved.playerToken) {
       playerToken = saved.playerToken;
       playerNumber = saved.playerNumber;
       roomCode = saved.roomCode;
       projectUrl = saved.projectUrl;
       apiKey = saved.apiKey;
-
       $("projectUrl").value = projectUrl;
       $("apiKey").value = apiKey;
-
       loadNotes();
       loadOwnSecret();
       showGameScreen();
@@ -1082,13 +1234,18 @@ function loadSession() {
   } catch (error) {
     console.log(error);
   }
+
+  if (playerProfile && projectUrl && apiKey) {
+    syncProfileIfNeeded().catch(error => {
+      $("connectionStatus").textContent = "Profil eşitleme hatası: " + error.message;
+    });
+  }
 }
 
 function initializeGame() {
   $("gameScreen").classList.add("hidden");
   $("connectionScreen").classList.remove("hidden");
 
-  /* Tarayıcı ses iznini ilk kullanıcı etkileşiminde aç */
   document.addEventListener("pointerdown", enableTurnAudio);
   document.addEventListener("keydown", enableTurnAudio);
 
@@ -1098,44 +1255,43 @@ function initializeGame() {
   $("lockBtn").addEventListener("click", lockSecret);
   $("guessBtn").addEventListener("click", submitGuess);
   $("resetNotesBtn").addEventListener("click", resetNotes);
-
   $("restartBtn").addEventListener("click", requestRestart);
   $("closeEasterEgg").addEventListener("click", closeEasterEgg);
 
-  /* Profil butonları */
   $("openProfileBtn").addEventListener("click", openProfile);
   $("closeProfileBtn").addEventListener("click", closeProfile);
   $("saveProfileBtn").addEventListener("click", createOrUpdateProfile);
-
   $("editProfileBtn").addEventListener("click", showProfileCreate);
+  $("showRecoveryBtn").addEventListener("click", showRecoveryArea);
+  $("backToProfileCreateBtn").addEventListener("click", showProfileCreate);
+  $("recoverProfileBtn").addEventListener("click", recoverProfile);
+  $("copyRecoveryCodeBtn").addEventListener("click", copyRecoveryCode);
 
   $("profileUsername").addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      createOrUpdateProfile();
-    }
+    if (event.key === "Enter") createOrUpdateProfile();
+  });
+  $("recoveryCodeInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") recoverProfile();
+  });
+  $("recoveryUsername").addEventListener("keydown", event => {
+    if (event.key === "Enter") recoverProfile();
+  });
+
+  $("friendSearchBtn").addEventListener("click", searchPlayer);
+  $("friendSearchInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") searchPlayer();
   });
 
   $("profileModal").addEventListener("click", event => {
-    if (event.target === $("profileModal")) {
-      closeProfile();
-    }
+    if (event.target === $("profileModal")) closeProfile();
   });
-
   document.addEventListener("keydown", event => {
-    if (
-      event.key === "Escape" &&
-      !$("profileModal").classList.contains("hidden")
-    ) {
-      closeProfile();
-    }
+    if (event.key === "Escape" && !$("profileModal").classList.contains("hidden")) closeProfile();
   });
 
   document.querySelectorAll(".color-choice").forEach(button => {
-    button.addEventListener("click", () => {
-      setColor(button.dataset.color);
-    });
+    button.addEventListener("click", () => setColor(button.dataset.color));
   });
-
   setColor("red");
 
   $("backBtn").addEventListener("click", () => {
@@ -1143,14 +1299,12 @@ function initializeGame() {
       clearInterval(pollTimer);
       pollTimer = null;
     }
-
     showConnectionScreen();
   });
 
   renderNumberBoard();
   renderMyGuesses();
   renderOwnSecret();
-
   loadProfile();
   loadSession();
 }
