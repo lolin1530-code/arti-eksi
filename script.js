@@ -27,10 +27,8 @@ function setColor(color) {
   });
 }
 
-/* Eski sıra mesajlarının güvenli şekilde devre dışı bırakılması */
 function setTurnMessage(message, color = "") {
   const turn = $("turn");
-
   if (!turn) return;
 
   turn.textContent = message;
@@ -39,7 +37,6 @@ function setTurnMessage(message, color = "") {
 
 function setCoinMessage(message) {
   const coin = $("coin");
-
   if (!coin) return;
 
   coin.textContent = message;
@@ -437,7 +434,6 @@ async function refreshState() {
 
     const history = Array.isArray(state.history) ? state.history : [];
 
-    // OYUNCULAR BEKLENİYOR VE SAYILAR KİLİTLENİYOR
     if (state.status === "waiting") {
       resetStartMessage();
 
@@ -447,30 +443,14 @@ async function refreshState() {
 
       if (!state.opponent_joined) {
         setTurnMessage("Rakip Bekleniyor", "#ff5364");
-
       } else if (!ownSecret && !state.opponent_locked) {
-        setTurnMessage(
-          "Gizli Sayıların Kilitlenmesi Bekleniyor",
-          "#e8c34d"
-        );
-
+        setTurnMessage("Gizli Sayıların Kilitlenmesi Bekleniyor", "#e8c34d");
       } else if (ownSecret && !state.opponent_locked) {
-        setTurnMessage(
-          "Rakibin Gizli Sayısını Kilitlemesi Bekleniyor",
-          "#e8c34d"
-        );
-
+        setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
       } else if (!ownSecret && state.opponent_locked) {
-        setTurnMessage(
-          "Gizli Sayını Kilitlemen Bekleniyor",
-          "#e8c34d"
-        );
-
+        setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
       } else {
-        setTurnMessage(
-          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
-          "#27c982"
-        );
+        setTurnMessage("Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor", "#27c982");
       }
 
       if (!ownSecret) {
@@ -478,7 +458,6 @@ async function refreshState() {
         $("lockBtn").disabled = false;
       }
 
-    // OYUN BAŞLADI
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
 
@@ -489,7 +468,6 @@ async function refreshState() {
       if (history.length > 0) {
         clearStartMessage();
         setTurnMessage("");
-
       } else {
         if (!startMessageShown && !startMessageTimer) {
           setTurnMessage(
@@ -501,13 +479,11 @@ async function refreshState() {
             startMessageTimer = null;
             showStartingPlayerMessage();
           }, 1500);
-
         } else if (startMessageShown) {
           showStartingPlayerMessage();
         }
       }
 
-    // SON ŞANS
     } else if (state.status === "last_chance") {
       clearStartMessage();
 
@@ -529,7 +505,6 @@ async function refreshState() {
         setTurnMessage("Rakibin sırası.");
       }
 
-    // OYUN BİTTİ
     } else if (state.status === "finished") {
       clearStartMessage();
 
@@ -541,12 +516,10 @@ async function refreshState() {
         setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "BERABERE!";
         $("gameResultText").style.color = "#e8c34d";
-
       } else if (Number(state.winner) === playerNumber) {
         setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAZANDIN!";
         $("gameResultText").style.color = "#27c982";
-
       } else {
         setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAYBETTİN!";
@@ -569,6 +542,7 @@ async function refreshState() {
     }
 
     renderMyGuesses();
+    renderTurnIndicator();
 
   } catch (error) {
     setTurnMessage(error.message, "#ff5364");
@@ -648,6 +622,7 @@ function renderMyGuesses() {
 
           saveNotes();
           renderMyGuesses();
+          renderTurnIndicator();
         };
 
         row.appendChild(cell);
@@ -662,11 +637,8 @@ function renderMyGuesses() {
       list.appendChild(result);
     });
   }
-
-  renderTurnIndicator();
 }
 
-/* Sıra mesajını ilgili oyuncunun tahminlerinin altına yerleştirir */
 function renderTurnIndicator() {
   document.querySelectorAll(".guess-turn-message").forEach(el => el.remove());
 
@@ -677,15 +649,14 @@ function renderTurnIndicator() {
     return;
   }
 
-  const myTurn = Number(gameState.turn) === playerNumber;
+  const myTurn = Number(gameState.turn) === Number(playerNumber);
 
-  const target = myTurn
-    ? $("myGuesses")
-    : $("opponentGuesses");
+  const target = $(myTurn ? "myGuesses" : "opponentGuesses");
+
+  if (!target) return;
 
   const message = document.createElement("div");
   message.className = "guess-turn-message";
-
   message.textContent = myTurn
     ? "Tahminin Bekleniyor..."
     : "Rakip Tahmin Yapıyor...";
@@ -739,6 +710,7 @@ function resetNotes() {
 
   saveNotes();
   renderMyGuesses();
+  renderTurnIndicator();
   renderNumberBoard();
 }
 
