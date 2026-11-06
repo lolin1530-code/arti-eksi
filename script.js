@@ -11,6 +11,9 @@ let numberMarks = {};
 let gameState = null;
 let ownSecret = "";
 
+let startMessageTimer = null;
+let startMessageShown = false;
+
 const $ = id => document.getElementById(id);
 
 function setColor(color) {
@@ -58,6 +61,13 @@ function loadOwnSecret() {
 }
 
 function clearRoundData() {
+  if (startMessageTimer) {
+    clearTimeout(startMessageTimer);
+    startMessageTimer = null;
+  }
+
+  startMessageShown = false;
+
   ownSecret = "";
   notes = [];
   numberMarks = {};
@@ -79,7 +89,7 @@ function clearRoundData() {
   $("gameResultBar").classList.add("hidden");
   $("restartBtn").classList.remove("hidden");
 
-  $("coin").textContent = "İki oyuncu da sayısını kilitleyince oyun başlayacak.";
+  $("coin").textContent = "";
 
   renderOwnSecret();
   renderMyGuesses();
@@ -159,6 +169,7 @@ async function createRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
+    startMessageShown = false;
 
     saveSession();
     loadNotes();
@@ -194,6 +205,7 @@ async function joinRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
+    startMessageShown = false;
 
     saveSession();
     loadNotes();
@@ -369,10 +381,41 @@ async function refreshState() {
       clearRoundData();
     }
 
+    const history = Array.isArray(state.history) ? state.history : [];
+
     if (state.status === "waiting") {
-      $("turn").textContent = "Rakip bekleniyor.";
+      if (startMessageTimer) {
+        clearTimeout(startMessageTimer);
+        startMessageTimer = null;
+      }
+
+      startMessageShown = false;
+
       $("guessBtn").disabled = true;
       hideGameResult();
+      $("coin").textContent = "";
+
+      if (!state.opponent_joined) {
+        $("turn").textContent = "Rakip Bekleniyor";
+        $("turn").style.color = "#ff5364";
+
+      } else if (!ownSecret && !state.opponent_locked) {
+        $("turn").textContent = "Gizli Sayıların Kitlenmesi Bekleniyor";
+        $("turn").style.color = "#e8c34d";
+
+      } else if (ownSecret && !state.opponent_locked) {
+        $("turn").textContent = "Rakibin Gizli Sayısını Kilitlemesi Bekleniyor";
+        $("turn").style.color = "#e8c34d";
+
+      } else if (!ownSecret && state.opponent_locked) {
+        $("turn").textContent = "Gizli Sayını Kilitlemen Bekleniyor";
+        $("turn").style.color = "#e8c34d";
+
+      } else {
+        $("turn").textContent =
+          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor";
+        $("turn").style.color = "#27c982";
+      }
 
       if (!ownSecret) {
         $("secret").disabled = false;
@@ -382,12 +425,55 @@ async function refreshState() {
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
 
-      $("turn").textContent = myTurn
-        ? "Sıra sende!"
-        : "Rakibin sırası.";
-
       $("guessBtn").disabled = !myTurn || !ownSecret;
       hideGameResult();
+      $("coin").textContent = "";
+
+      if (history.length > 0) {
+        if (startMessageTimer) {
+          clearTimeout(startMessageTimer);
+          startMessageTimer = null;
+        }
+
+        startMessageShown = true;
+        $("turn").textContent = "";
+        $("turn").style.color = "";
+
+      } else if (!startMessageShown && !startMessageTimer) {
+        $("turn").textContent =
+          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor";
+        $("turn").style.color = "#27c982";
+
+        startMessageTimer = setTimeout(() => {
+          startMessageTimer = null;
+
+          if (
+            gameState &&
+            gameState.status === "playing" &&
+            (!Array.isArray(gameState.history) || gameState.history.length === 0)
+          ) {
+            const currentTurn = Number(gameState.turn);
+
+            if (currentTurn === playerNumber) {
+              $("turn").textContent = "Tahmine Başla";
+              $("turn").style.color = "#27c982";
+            } else {
+              $("turn").textContent = "Rakip Tahmine Başlıyor";
+              $("turn").style.color = "#ff5364";
+            }
+
+            startMessageShown = true;
+          }
+        }, 1500);
+      } else if (startMessageShown && history.length === 0) {
+        if (myTurn) {
+          $("turn").textContent = "Tahmine Başla";
+          $("turn").style.color = "#27c982";
+        } else {
+          $("turn").textContent = "Rakip Tahmine Başlıyor";
+          $("turn").style.color = "#ff5364";
+        }
+      }
 
     } else if (state.status === "last_chance") {
       const myTurn = Number(state.turn) === playerNumber;
@@ -396,14 +482,12 @@ async function refreshState() {
 
       $("gameResultBar").classList.remove("hidden");
       $("restartStatus").classList.add("hidden");
-
-      // Son şans sırasında tekrar oynama butonu görünmez.
       $("restartBtn").classList.add("hidden");
 
       if (myTurn) {
         $("gameResultText").textContent = "SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
-        $("turn").textContent = "Sıra sende!";
+        $("turn").textContent = "Sıra sende.";
       } else {
         $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
@@ -413,8 +497,6 @@ async function refreshState() {
     } else if (state.status === "finished") {
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
-
-      // Oyun bittiğinde tekrar oynama butonu görünür.
       $("restartBtn").classList.remove("hidden");
 
       if (state.winner === null || state.winner === undefined) {
@@ -434,15 +516,6 @@ async function refreshState() {
       }
 
       await updateRestartStatus();
-    }
-
-    if (state.opponent_locked) {
-      $("coin").textContent = "İki oyuncu da sayısını kilitledi.";
-    }
-
-    if (state.status === "playing" && lastStatus !== "playing") {
-      $("coin").textContent =
-        "🪙 Oyuna başlayan: Oyuncu " + state.turn;
     }
 
     lastStatus = state.status;
