@@ -1,6 +1,4 @@
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -10,22 +8,9 @@ body {
   font-family: Arial, sans-serif;
 }
 
-.container {
-  width: 100%;
-  max-width: 1100px;
-  margin: auto;
-}
-
-h1 {
-  text-align: center;
-  color: #ffffff;
-  margin-bottom: 25px;
-}
-
-h2 {
-  font-size: 19px;
-  margin-top: 0;
-}
+.container { width: 100%; max-width: 1100px; margin: auto; }
+h1 { text-align: center; color: #fff; margin-bottom: 25px; }
+h2 { font-size: 19px; margin-top: 0; }
 
 .panel {
   background: #1b2030;
@@ -54,60 +39,24 @@ button {
   font-weight: bold;
   cursor: pointer;
 }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:active { transform: scale(.98); }
 
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-button:active {
-  transform: scale(0.98);
-}
-
-#connectBtn,
-#createRoomBtn,
-#joinRoomBtn,
-#lockBtn,
-#guessBtn,
-#resetNotesBtn {
+#connectBtn, #createRoomBtn, #joinRoomBtn, #lockBtn, #guessBtn, #resetNotesBtn {
   background: #526dff;
   color: white;
   margin: 5px 0;
 }
+#backBtn { background: #343c50; color: white; }
+.hidden { display: none !important; }
+.hint { color: #aab2c5; font-size: 13px; }
+#connectionStatus, #roomStatus, #secretStatus, #feedback { color: #aebcff; margin-top: 10px; }
 
-#backBtn {
-  background: #343c50;
-  color: white;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.hint {
-  color: #aab2c5;
-  font-size: 13px;
-}
-
-#connectionStatus,
-#roomStatus,
-#secretStatus,
-#feedback {
-  color: #aebcff;
-  margin-top: 10px;
-}
-
-/* Profil giriş kartı */
 .profile-entry-panel {
   border-color: #526dff55;
   background: linear-gradient(135deg, #202943, #1b2030);
 }
-
-.profile-entry-panel p {
-  color: #aeb9d1;
-  font-size: 14px;
-}
-
+.profile-entry-panel p { color: #aeb9d1; font-size: 14px; }
 #openProfileBtn {
   width: 100%;
   color: white;
@@ -115,7 +64,6 @@ button:active {
   margin-top: 5px;
 }
 
-/* Profil penceresi */
 .profile-modal {
   position: fixed;
   inset: 0;
@@ -124,27 +72,21 @@ button:active {
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(5, 8, 15, 0.78);
+  background: rgba(5, 8, 15, .78);
   backdrop-filter: blur(5px);
 }
-
 .profile-card {
   position: relative;
-  width: min(100%, 440px);
-  max-height: 90vh;
+  width: min(100%, 650px);
+  max-height: 92vh;
   overflow-y: auto;
   padding: 27px;
   border: 1px solid #3d4967;
   border-radius: 19px;
   background: #1b2030;
-  box-shadow: 0 18px 60px #00000066;
+  box-shadow: 0 18px 60px #0006;
 }
-
-.profile-card h2 {
-  font-size: 23px;
-  margin-bottom: 10px;
-}
-
+.profile-card h2 { font-size: 23px; margin-bottom: 10px; }
 .profile-close {
   position: absolute;
   top: 12px;
@@ -156,503 +98,171 @@ button:active {
   color: white;
   font-size: 25px;
 }
+.profile-description { color: #aab6cc; font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+.profile-form-status { min-height: 18px; color: #ff8993; font-size: 13px; margin: 0 0 10px; }
+.profile-primary-btn, .profile-secondary-btn { width: 100%; min-height: 47px; margin-top: 8px; }
+.profile-primary-btn { color: white; background: linear-gradient(135deg, #526dff, #7656db); }
+.profile-secondary-btn { color: #e0e6f5; background: #30394d; }
 
-.profile-description {
-  color: #aab6cc;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 22px;
-}
-
-.profile-form-status {
-  min-height: 18px;
-  color: #ff8993;
-  font-size: 13px;
-  margin: 0 0 10px;
-}
-
-.profile-primary-btn,
-.profile-secondary-btn {
-  width: 100%;
-  min-height: 47px;
-  margin-top: 8px;
-}
-
-.profile-primary-btn {
-  color: white;
-  background: linear-gradient(135deg, #526dff, #7656db);
-}
-
-.profile-secondary-btn {
-  color: #e0e6f5;
-  background: #30394d;
-}
-
-.profile-heading {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin: 8px 0 24px;
-}
-
+.profile-heading { display: flex; align-items: center; gap: 15px; margin: 8px 0 24px; }
 .profile-avatar {
-  width: 66px;
-  height: 66px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 66px; height: 66px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
   background: linear-gradient(135deg, #526dff, #8061d9);
-  color: white;
-  font-size: 29px;
-  font-weight: 900;
+  color: white; font-size: 29px; font-weight: 900;
   box-shadow: 0 5px 18px #526dff44;
 }
-
-.profile-heading-info h2 {
-  margin: 0 0 5px;
-  overflow-wrap: anywhere;
-}
-
-.profile-heading-info p {
-  color: #aab6cc;
-  font-size: 13px;
-  margin: 0;
-}
-
-.profile-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
+.profile-heading-info h2 { margin: 0 0 5px; overflow-wrap: anywhere; }
+.profile-heading-info p { color: #aab6cc; font-size: 13px; margin: 0; }
+.profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .profile-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 17px;
-  border: 1px solid #3b455d;
-  border-radius: 13px;
-  background: #252e43;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 17px; border: 1px solid #3b455d;
+  border-radius: 13px; background: #252e43;
 }
+.profile-stat-label { color: #b8c3d9; font-size: 12px; font-weight: bold; letter-spacing: 1.5px; }
+.profile-stat strong { font-size: 34px; line-height: 1.2; }
+.profile-stat > span:last-child { color: #aab6cc; font-size: 12px; }
+.win-stat strong { color: #55d99b; }
+.lose-stat strong { color: #ff7784; }
+.profile-rate { margin-top: 23px; }
+.profile-rate-heading { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 9px; color: #c7d0e1; font-size: 13px; }
+.profile-rate-heading strong { color: white; }
+.profile-rate-track { height: 9px; width: 100%; overflow: hidden; border-radius: 20px; background: #343e54; }
+.profile-rate-fill { height: 100%; width: 0%; border-radius: 20px; background: linear-gradient(90deg, #42bd88, #78e2a9); transition: width 300ms ease; }
+.profile-note { color: #8996b0; font-size: 11px; line-height: 1.5; margin: 17px 0; }
 
-.profile-stat-label {
-  color: #b8c3d9;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 1.5px;
-}
-
-.profile-stat strong {
-  font-size: 34px;
-  line-height: 1.2;
-}
-
-.profile-stat > span:last-child {
-  color: #aab6cc;
-  font-size: 12px;
-}
-
-.win-stat strong {
-  color: #55d99b;
-}
-
-.lose-stat strong {
-  color: #ff7784;
-}
-
-.profile-rate {
-  margin-top: 23px;
-}
-
-.profile-rate-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 9px;
-  color: #c7d0e1;
-  font-size: 13px;
-}
-
-.profile-rate-heading strong {
-  color: white;
-}
-
-.profile-rate-track {
-  height: 9px;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 20px;
-  background: #343e54;
-}
-
-.profile-rate-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: 20px;
-  background: linear-gradient(90deg, #42bd88, #78e2a9);
-  transition: width 300ms ease;
-}
-
-.profile-note {
-  color: #8996b0;
-  font-size: 11px;
-  line-height: 1.5;
-  margin: 17px 0;
-}
-
-/* Üst durum kutusu */
-.turn-status-panel {
-  text-align: center;
+.recovery-box {
+  margin: 18px 0;
   padding: 15px;
+  border: 1px solid #526dff66;
+  border-radius: 12px;
+  background: #202943;
+}
+.recovery-box h3, .friends-section h3 { margin: 0 0 9px; font-size: 15px; }
+.recovery-box p { color: #aab6cc; font-size: 12px; line-height: 1.5; }
+.recovery-code-row { display: flex; align-items: center; gap: 8px; }
+.recovery-code-row code {
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  padding: 10px; border-radius: 7px; background: #111725;
+  color: #e8c34d; font-size: 12px;
+}
+.recovery-code-row button, .friend-search-row button {
+  background: #526dff; color: white; flex-shrink: 0;
+}
+.small-status { color: #aebcff; font-size: 12px; min-height: 16px; margin: 7px 0; }
+
+.friends-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid #30384c; }
+.friends-section h3 { margin-top: 20px; }
+.friend-search-row { display: flex; gap: 8px; align-items: center; }
+.friend-search-row input { flex: 1; min-width: 0; margin-bottom: 8px; }
+.friend-search-row button { margin-bottom: 5px; }
+.friend-list { display: flex; flex-direction: column; gap: 8px; }
+.friend-card {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; padding: 11px 12px;
+  border: 1px solid #3b455d; border-radius: 10px; background: #252e43;
+}
+.friend-card-main { min-width: 0; }
+.friend-card-name { font-weight: bold; overflow-wrap: anywhere; }
+.friend-card-stats { color: #aab6cc; font-size: 11px; margin-top: 4px; }
+.friend-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.friend-card-actions button { padding: 9px 11px; font-size: 12px; }
+.friend-accept { color: #092218; background: #55d99b; }
+.friend-reject { color: white; background: #a84553; }
+.friend-add { color: white; background: #526dff; }
+.friend-empty { color: #8996b0; font-size: 12px; margin: 4px 0; }
+
+.turn-status-panel {
+  text-align: center; padding: 15px;
   background: linear-gradient(135deg, #252e45, #1b2030);
   border: 1px solid #526dff66;
-  box-shadow: 0 4px 16px #00000022;
-  overflow: hidden;
+  box-shadow: 0 4px 16px #00000022; overflow: hidden;
 }
+#turn { margin: 0; font-size: clamp(15px, 3vw, 19px); font-weight: 900; }
 
-#turn {
-  margin: 0;
-  font-size: clamp(15px, 3vw, 19px);
-  font-weight: 900;
-}
-
-/* Renk seçme alanı */
-.color-picker-panel {
-  width: 100%;
-}
-
-.color-buttons {
-  display: flex;
-  width: 100%;
-  gap: 10px;
-}
-
+.color-picker-panel { width: 100%; }
+.color-buttons { display: flex; width: 100%; gap: 10px; }
 .color-choice {
-  flex: 1;
-  min-width: 0;
-  min-height: 75px;
-  font-size: 17px;
-  font-weight: 900;
-  color: white;
-  border: 3px solid transparent;
-  border-radius: 12px;
+  flex: 1; min-width: 0; min-height: 75px;
+  font-size: 17px; font-weight: 900; color: white;
+  border: 3px solid transparent; border-radius: 12px;
 }
+.color-choice.red { background: #d93645; }
+.color-choice.yellow { background: #d6a91e; color: #171717; }
+.color-choice.green { background: #169b62; }
+.color-choice.active { border: 4px solid white; box-shadow: 0 0 12px #ffffff55; }
+#color { display: none; }
 
-.color-choice.red {
-  background: #d93645;
-}
-
-.color-choice.yellow {
-  background: #d6a91e;
-  color: #171717;
-}
-
-.color-choice.green {
-  background: #169b62;
-}
-
-.color-choice.active {
-  border: 4px solid white;
-  box-shadow: 0 0 12px #ffffff55;
-}
-
-#color {
-  display: none;
-}
-
-/* Oyun sonucu ve tekrar oynama */
 .game-result-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 18px;
-  padding-top: 15px;
-  border-top: 1px solid #30384c;
-  min-height: 65px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; margin-top: 18px; padding-top: 15px;
+  border-top: 1px solid #30384c; min-height: 65px;
 }
+#gameResultText { flex: 1; font-size: clamp(19px, 4vw, 27px); font-weight: 900; }
+#restartBtn { flex-shrink: 0; background: #526dff; color: white; min-height: 48px; }
+.restart-status { color: #aebcff; font-size: 13px; margin: 10px 0 0; text-align: right; }
 
-#gameResultText {
-  flex: 1;
-  font-size: clamp(19px, 4vw, 27px);
-  font-weight: 900;
-}
-
-#restartBtn {
-  flex-shrink: 0;
-  background: #526dff;
-  color: white;
-  min-height: 48px;
-}
-
-.restart-status {
-  color: #aebcff;
-  font-size: 13px;
-  margin: 10px 0 0;
-  text-align: right;
-}
-
-/* Oyuncu alanları */
-.player-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-.player-columns .panel {
-  min-width: 0;
-}
-
-.guess-row {
-  display: flex;
-  gap: 6px;
-  margin: 8px 0;
-}
-
+.player-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.player-columns .panel { min-width: 0; }
+.guess-row { display: flex; gap: 6px; margin: 8px 0; }
 .guess-digit {
-  flex: 1;
-  min-width: 0;
-  min-height: 43px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #30394d;
-  border-radius: 7px;
-  font-size: 20px;
-  font-weight: bold;
-  cursor: pointer;
+  flex: 1; min-width: 0; min-height: 43px;
+  display: flex; align-items: center; justify-content: center;
+  background: #30394d; border-radius: 7px;
+  font-size: 20px; font-weight: bold; cursor: pointer;
 }
+.guess-digit.red, .digit.red { background: #d93645; color: white; }
+.guess-digit.green, .digit.green { background: #169b62; color: white; }
+.guess-digit.yellow, .digit.yellow { background: #d6a91e; color: #171717; }
+.secret-display { display: flex; gap: 7px; margin: 12px 0; }
+.secret-display span { flex: 1; padding: 12px 5px; text-align: center; background: #30394d; border-radius: 8px; font-size: 21px; font-weight: bold; }
+#guess { margin-top: 12px; }
+.number-board, #numberBoard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
+.digit { min-height: 65px; background: #30394d; color: white; border-radius: 10px; font-size: 23px; font-weight: bold; cursor: pointer; }
+#myGuesses, #opponentGuesses { min-height: 60px; }
+.guess-turn-message { font-size: 13px; font-weight: 700; color: #c5ccdc; margin: 8px 2px 12px; text-align: center; white-space: nowrap; }
+.guess-turn-message.my-turn { color: #52dfa0; }
+.guess-turn-message.opponent-turn { color: #ff8993; }
+.guess-turn-message span { display: inline-block; animation: letterWave 1.35s ease-in-out infinite; will-change: transform; }
+@keyframes letterWave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+.guess-turn-message.turn-arrived { animation: messageFadeIn 350ms ease-out both; }
+@keyframes messageFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.guess-digit.red,
-.digit.red {
-  background: #d93645;
-  color: white;
-}
-
-.guess-digit.green,
-.digit.green {
-  background: #169b62;
-  color: white;
-}
-
-.guess-digit.yellow,
-.digit.yellow {
-  background: #d6a91e;
-  color: #171717;
-}
-
-.secret-display {
-  display: flex;
-  gap: 7px;
-  margin: 12px 0;
-}
-
-.secret-display span {
-  flex: 1;
-  padding: 12px 5px;
-  text-align: center;
-  background: #30394d;
-  border-radius: 8px;
-  font-size: 21px;
-  font-weight: bold;
-}
-
-#guess {
-  margin-top: 12px;
-}
-
-/* 0-9 rakam tahtası */
-.number-board,
-#numberBoard {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.digit {
-  min-height: 65px;
-  background: #30394d;
-  color: white;
-  border-radius: 10px;
-  font-size: 23px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-#myGuesses,
-#opponentGuesses {
-  min-height: 60px;
-}
-
-/* Sıra mesajı */
-.guess-turn-message {
-  font-size: 13px;
-  font-weight: 700;
-  color: #c5ccdc;
-  margin: 8px 2px 12px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.guess-turn-message.my-turn {
-  color: #52dfa0;
-}
-
-.guess-turn-message.opponent-turn {
-  color: #ff8993;
-}
-
-.guess-turn-message span {
-  display: inline-block;
-  animation: letterWave 1.35s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes letterWave {
-  0%, 60%, 100% {
-    transform: translateY(0);
-  }
-
-  30% {
-    transform: translateY(-5px);
-  }
-}
-
-.guess-turn-message.turn-arrived {
-  animation: messageFadeIn 350ms ease-out both;
-}
-
-@keyframes messageFadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-/* 8041 Easter egg */
 .easter-egg {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(5, 8, 15, 0.65);
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(5, 8, 15, .65);
 }
-
 .easter-egg-card {
-  position: relative;
-  width: min(92vw, 440px);
-  padding: 28px 24px 22px;
-  border: 2px solid #d6a91e;
-  border-radius: 16px;
-  background: #1b2030;
+  position: relative; width: min(92vw, 440px); padding: 28px 24px 22px;
+  border: 2px solid #d6a91e; border-radius: 16px; background: #1b2030;
   box-shadow: 0 0 30px #d6a91e44;
 }
+.easter-egg-card h2 { color: #e8c34d; padding-right: 25px; margin-bottom: 15px; }
+.easter-egg-card p { line-height: 1.6; font-size: 14px; color: #f1f3f8; }
+.easter-egg-close { position: absolute; top: 8px; right: 9px; width: 34px; height: 34px; padding: 0; background: #343c50; color: white; font-size: 25px; line-height: 1; }
+.easter-egg-card .easter-egg-signature { color: #e8c34d; text-align: right; font-weight: bold; margin-bottom: 0; }
 
-.easter-egg-card h2 {
-  color: #e8c34d;
-  padding-right: 25px;
-  margin-bottom: 15px;
-}
+.guess-digit { color: white !important; }
+#myGuesses .guess-digit, #opponentGuesses .guess-digit { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+#gameResultText.last-chance { color: #b9c4d8; opacity: .8; }
 
-.easter-egg-card p {
-  line-height: 1.6;
-  font-size: 14px;
-  color: #f1f3f8;
-}
-
-.easter-egg-close {
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  background: #343c50;
-  color: white;
-  font-size: 25px;
-  line-height: 1;
-}
-
-.easter-egg-card .easter-egg-signature {
-  color: #e8c34d;
-  text-align: right;
-  font-weight: bold;
-  margin-bottom: 0;
-}
-
-/* Mobil */
 @media (max-width: 600px) {
-  body {
-    padding: 10px;
-  }
-
-  .panel {
-    padding: 13px;
-  }
-
-  .player-columns {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .color-choice {
-    min-height: 68px;
-    font-size: 13px;
-  }
-
-  .digit {
-    min-height: 55px;
-  }
-
-  .game-result-bar {
-    gap: 8px;
-  }
-
-  #restartBtn {
-    padding: 12px 10px;
-    font-size: 12px;
-  }
-
-  .easter-egg-card {
-    padding: 25px 18px 18px;
-  }
-
-  .guess-turn-message {
-    font-size: 11px;
-  }
-
-  .profile-card {
-    padding: 23px 18px;
-  }
+  body { padding: 10px; }
+  .panel { padding: 13px; }
+  .player-columns { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .color-choice { min-height: 68px; font-size: 13px; }
+  .digit { min-height: 55px; }
+  .game-result-bar { gap: 8px; }
+  #restartBtn { padding: 12px 10px; font-size: 12px; }
+  .easter-egg-card { padding: 25px 18px 18px; }
+  .guess-turn-message { font-size: 11px; }
+  .profile-card { padding: 23px 18px; }
+  .friend-card { align-items: flex-start; flex-direction: column; }
+  .friend-card-actions { width: 100%; }
+  .friend-card-actions button { flex: 1; }
+  .recovery-code-row { align-items: stretch; flex-direction: column; }
 }
-
-.guess-digit {
-  color: white !important;
-}
-
-#myGuesses .guess-digit,
-#opponentGuesses .guess-digit {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-}
-
-/* Son şans mesajı */
-#gameResultText.last-chance {
-  color: #b9c4d8;
-  opacity: 0.8;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .guess-turn-message span {
-    animation: none;
-  }
-}
+@media (prefers-reduced-motion: reduce) { .guess-turn-message span { animation: none; } }
