@@ -27,6 +27,29 @@ function setColor(color) {
   });
 }
 
+function setTurnMessage(message, color = "") {
+  $("turn").textContent = message;
+  $("turn").style.color = color;
+}
+
+function clearStartMessage() {
+  if (startMessageTimer) {
+    clearTimeout(startMessageTimer);
+    startMessageTimer = null;
+  }
+
+  startMessageShown = true;
+}
+
+function resetStartMessage() {
+  if (startMessageTimer) {
+    clearTimeout(startMessageTimer);
+    startMessageTimer = null;
+  }
+
+  startMessageShown = false;
+}
+
 function saveSession() {
   localStorage.setItem("arti_session", JSON.stringify({
     projectUrl, apiKey, playerToken, playerNumber, roomCode
@@ -61,12 +84,7 @@ function loadOwnSecret() {
 }
 
 function clearRoundData() {
-  if (startMessageTimer) {
-    clearTimeout(startMessageTimer);
-    startMessageTimer = null;
-  }
-
-  startMessageShown = false;
+  resetStartMessage();
 
   ownSecret = "";
   notes = [];
@@ -90,6 +108,7 @@ function clearRoundData() {
   $("restartBtn").classList.remove("hidden");
 
   $("coin").textContent = "";
+  setTurnMessage("");
 
   renderOwnSecret();
   renderMyGuesses();
@@ -169,7 +188,7 @@ async function createRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
-    startMessageShown = false;
+    resetStartMessage();
 
     saveSession();
     loadNotes();
@@ -205,7 +224,7 @@ async function joinRoom() {
     numberMarks = {};
     ownSecret = "";
     lastStatus = "";
-    startMessageShown = false;
+    resetStartMessage();
 
     saveSession();
     loadNotes();
@@ -358,6 +377,28 @@ async function requestRestart() {
   }
 }
 
+function showStartingPlayerMessage() {
+  if (!gameState || gameState.status !== "playing") return;
+
+  const history = Array.isArray(gameState.history) ? gameState.history : [];
+
+  if (history.length > 0) {
+    clearStartMessage();
+    setTurnMessage("");
+    return;
+  }
+
+  const currentTurn = Number(gameState.turn);
+
+  if (currentTurn === playerNumber) {
+    setTurnMessage("Tahmine Başla", "#27c982");
+  } else {
+    setTurnMessage("Rakip Tahmine Başlıyor", "#ff5364");
+  }
+
+  startMessageShown = true;
+}
+
 async function refreshState() {
   if (!playerToken) return;
 
@@ -383,38 +424,40 @@ async function refreshState() {
 
     const history = Array.isArray(state.history) ? state.history : [];
 
+    // OYUNCULAR BEKLENİYOR VE SAYILAR KİLİTLENİYOR
     if (state.status === "waiting") {
-      if (startMessageTimer) {
-        clearTimeout(startMessageTimer);
-        startMessageTimer = null;
-      }
-
-      startMessageShown = false;
+      resetStartMessage();
 
       $("guessBtn").disabled = true;
       hideGameResult();
       $("coin").textContent = "";
 
       if (!state.opponent_joined) {
-        $("turn").textContent = "Rakip Bekleniyor";
-        $("turn").style.color = "#ff5364";
+        setTurnMessage("Rakip Bekleniyor", "#ff5364");
 
       } else if (!ownSecret && !state.opponent_locked) {
-        $("turn").textContent = "Gizli Sayıların Kitlenmesi Bekleniyor";
-        $("turn").style.color = "#e8c34d";
+        setTurnMessage(
+          "Gizli Sayıların Kilitlenmesi Bekleniyor",
+          "#e8c34d"
+        );
 
       } else if (ownSecret && !state.opponent_locked) {
-        $("turn").textContent = "Rakibin Gizli Sayısını Kilitlemesi Bekleniyor";
-        $("turn").style.color = "#e8c34d";
+        setTurnMessage(
+          "Rakibin Gizli Sayısını Kilitlemesi Bekleniyor",
+          "#e8c34d"
+        );
 
       } else if (!ownSecret && state.opponent_locked) {
-        $("turn").textContent = "Gizli Sayını Kilitlemen Bekleniyor";
-        $("turn").style.color = "#e8c34d";
+        setTurnMessage(
+          "Gizli Sayını Kilitlemen Bekleniyor",
+          "#e8c34d"
+        );
 
       } else {
-        $("turn").textContent =
-          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor";
-        $("turn").style.color = "#27c982";
+        setTurnMessage(
+          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
+          "#27c982"
+        );
       }
 
       if (!ownSecret) {
@@ -422,6 +465,7 @@ async function refreshState() {
         $("lockBtn").disabled = false;
       }
 
+    // OYUN BAŞLADI
     } else if (state.status === "playing") {
       const myTurn = Number(state.turn) === playerNumber;
 
@@ -429,53 +473,33 @@ async function refreshState() {
       hideGameResult();
       $("coin").textContent = "";
 
+      // İlk tahmin yapılmışsa başlangıç mesajını tamamen kaldır.
       if (history.length > 0) {
-        if (startMessageTimer) {
-          clearTimeout(startMessageTimer);
-          startMessageTimer = null;
-        }
+        clearStartMessage();
+        setTurnMessage("");
 
-        startMessageShown = true;
-        $("turn").textContent = "";
-        $("turn").style.color = "";
+      } else {
+        // İki oyuncu da kilitledikten sonra önce geçiş mesajı.
+        if (!startMessageShown && !startMessageTimer) {
+          setTurnMessage(
+            "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor",
+            "#27c982"
+          );
 
-      } else if (!startMessageShown && !startMessageTimer) {
-        $("turn").textContent =
-          "Taraflar Gizli Sayılarını Kilitledi, Başlayan Taraf Seçiliyor";
-        $("turn").style.color = "#27c982";
+          startMessageTimer = setTimeout(() => {
+            startMessageTimer = null;
+            showStartingPlayerMessage();
+          }, 1500);
 
-        startMessageTimer = setTimeout(() => {
-          startMessageTimer = null;
-
-          if (
-            gameState &&
-            gameState.status === "playing" &&
-            (!Array.isArray(gameState.history) || gameState.history.length === 0)
-          ) {
-            const currentTurn = Number(gameState.turn);
-
-            if (currentTurn === playerNumber) {
-              $("turn").textContent = "Tahmine Başla";
-              $("turn").style.color = "#27c982";
-            } else {
-              $("turn").textContent = "Rakip Tahmine Başlıyor";
-              $("turn").style.color = "#ff5364";
-            }
-
-            startMessageShown = true;
-          }
-        }, 1500);
-      } else if (startMessageShown && history.length === 0) {
-        if (myTurn) {
-          $("turn").textContent = "Tahmine Başla";
-          $("turn").style.color = "#27c982";
-        } else {
-          $("turn").textContent = "Rakip Tahmine Başlıyor";
-          $("turn").style.color = "#ff5364";
+        } else if (startMessageShown) {
+          showStartingPlayerMessage();
         }
       }
 
+    // SON ŞANS
     } else if (state.status === "last_chance") {
+      clearStartMessage();
+
       const myTurn = Number(state.turn) === playerNumber;
 
       $("guessBtn").disabled = !myTurn || !ownSecret;
@@ -487,35 +511,45 @@ async function refreshState() {
       if (myTurn) {
         $("gameResultText").textContent = "SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
-        $("turn").textContent = "Sıra sende.";
+        setTurnMessage("Sıra sende.");
       } else {
         $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
-        $("turn").textContent = "Rakibin sırası.";
+        setTurnMessage("Rakibin sırası.");
       }
 
+    // OYUN BİTTİ
     } else if (state.status === "finished") {
+      clearStartMessage();
+
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
       $("restartBtn").classList.remove("hidden");
 
       if (state.winner === null || state.winner === undefined) {
-        $("turn").textContent = "Oyun sona erdi.";
+        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "BERABERE!";
         $("gameResultText").style.color = "#e8c34d";
 
       } else if (Number(state.winner) === playerNumber) {
-        $("turn").textContent = "Oyun sona erdi.";
+        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAZANDIN!";
         $("gameResultText").style.color = "#27c982";
 
       } else {
-        $("turn").textContent = "Oyun sona erdi.";
+        setTurnMessage("Oyun sona erdi.");
         $("gameResultText").textContent = "KAYBETTİN!";
         $("gameResultText").style.color = "#ff5364";
       }
 
       await updateRestartStatus();
+
+    } else {
+      // Tanınmayan bir durum varsa eski mesaj ekranda kalmasın.
+      clearStartMessage();
+      $("guessBtn").disabled = true;
+      $("coin").textContent = "";
+      setTurnMessage("");
     }
 
     lastStatus = state.status;
@@ -527,7 +561,7 @@ async function refreshState() {
     renderMyGuesses();
 
   } catch (error) {
-    $("turn").textContent = error.message;
+    setTurnMessage(error.message, "#ff5364");
   }
 }
 
