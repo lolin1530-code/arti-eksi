@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -17,7 +16,7 @@
         <label for="projectUrl">Project URL</label>
         <input id="projectUrl" type="url" placeholder="https://....supabase.co">
         <label for="apiKey">Publishable Key</label>
-       <input id="apiKey" type="text" placeholder="sb_publishable_...">
+        <input id="apiKey" type="text" placeholder="sb_publishable_...">
         <button id="connectBtn" type="button">Bağlan</button>
         <p id="connectionStatus">Bağlantı bekleniyor.</p>
       </div>
@@ -62,8 +61,15 @@
           <button type="button" class="color-choice yellow" data-color="yellow">SARI</button>
           <button type="button" class="color-choice green" data-color="green">YEŞİL</button>
         </div>
+
         <input type="hidden" id="color" value="red">
         <p class="hint">Tahminlerindeki rakamları tek tek işaretleyebilirsin.</p>
+
+        <div id="gameResultBar" class="game-result-bar hidden">
+          <div id="gameResultText"></div>
+          <button id="restartBtn" type="button">TEKRAR OYNA</button>
+        </div>
+        <p id="restartStatus" class="restart-status hidden"></p>
       </div>
 
       <div class="player-columns">
@@ -93,9 +99,12 @@
     </section>
   </main>
 
-  <div id="resultOverlay" class="result-overlay hidden" role="alert" aria-live="assertive">
-    <div class="result-card">
-      <div id="resultOverlayText">KAZANDIN!</div>
+  <div id="easterEgg" class="easter-egg hidden" role="dialog" aria-live="polite">
+    <div class="easter-egg-card">
+      <button id="closeEasterEgg" class="easter-egg-close" type="button" aria-label="Kapat">×</button>
+      <h2>8041 TARİKATI</h2>
+      <p>Kutsal 8041'in yolunda... Bu sayıyı seçip kaybeden herkes ya dersten FD ile kaldı ya da bir lambader olarak 8 yıl yaşadı. 8041 yolunda kazanmaya devam et. Doğru yoldasın yoldaş.</p>
+      <p class="easter-egg-signature">-8041 Tarikatı</p>
     </div>
   </div>
 
