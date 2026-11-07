@@ -314,13 +314,13 @@ button:active { transform: scale(.98); }
 body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d111b 78%);background-attachment:fixed}
 .container{max-width:980px}
 #connectionScreen.landing-screen{max-width:850px;margin:0 auto;padding:8px 0 28px}
-.landing-hero{text-align:center;padding:26px 12px 30px}
+.landing-hero{text-align:center;padding:26px 12px 22px}
 .landing-brand-mark{display:flex;align-items:center;justify-content:center;width:54px;height:54px;margin:0 auto 15px;border:1px solid #7f91ff88;border-radius:17px;background:linear-gradient(145deg,#344675,#202b48);box-shadow:0 8px 30px #526dff30;color:#fff;font-size:31px;font-weight:900}
 .landing-eyebrow{margin:0 0 9px;color:#9baee8;font-size:10px;font-weight:800;letter-spacing:3px}
 .landing-hero h1{margin:0;color:#f8f9ff;font-size:clamp(38px,7vw,60px);font-weight:950;letter-spacing:5px;line-height:1.05;text-shadow:0 5px 28px #0006}
 .landing-hero h1 span{color:#8295ff}
 .landing-subtitle{margin:13px 0 0;color:#aebbd5;font-size:14px;letter-spacing:.2px}
-.landing-rule{display:flex;align-items:center;justify-content:center;gap:9px;margin:22px auto 0;color:#7187f5;font-size:8px}
+.landing-rule{display:flex;align-items:center;justify-content:center;gap:9px;margin:16px auto 0;color:#7187f5;font-size:8px}
 .landing-rule span{width:54px;height:1px;background:linear-gradient(90deg,transparent,#6177d7)}
 .landing-rule span:last-child{transform:rotate(180deg)}
 .connection-panel{padding:16px 19px 12px;margin-bottom:15px;border:1px solid #394765;border-radius:15px;background:#171f30d9;box-shadow:0 12px 32px #0002}
