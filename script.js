@@ -410,9 +410,10 @@ async function recordProfileResult(state) {
   playerProfile.processedMatches = Array.isArray(playerProfile.processedMatches)
     ? playerProfile.processedMatches : [];
 
-  if (playerProfile.processedMatches.includes(matchKey)) return;
+  if (window.__artiRoomSyncDone && window.__artiRoomSyncDone.has(matchKey)) return;
   if (window.__artiRecordingMatches && window.__artiRecordingMatches.has(matchKey)) return;
   if (!window.__artiRecordingMatches) window.__artiRecordingMatches = new Set();
+  if (!window.__artiRoomSyncDone) window.__artiRoomSyncDone = new Set();
   window.__artiRecordingMatches.add(matchKey);
 
   const won = state.winner === null || state.winner === undefined
@@ -436,6 +437,7 @@ async function recordProfileResult(state) {
       playerProfile.processedMatches.push(matchKey);
       saveProfile();
     }
+    window.__artiRoomSyncDone.add(matchKey);
   } catch (error) {
     console.error("İki oyuncunun maç sonucu kaydedilemedi:", error);
     return;
