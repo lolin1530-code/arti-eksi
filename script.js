@@ -806,7 +806,12 @@ function renderMatchProfiles(state = gameState) {
   const p1 = state && state.player1_profile ? state.player1_profile : null;
   const p2 = state && state.player2_profile ? state.player2_profile : null;
   const ownSlot = Number(playerNumber) === 1 ? 1 : 2;
+  const opponentName = state && (
+    state.opponent_username || state.opponent_name ||
+    (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
+  );
   const local = playerProfile;
+
   function paint(slot, data, isOwn) {
     data = data || (isOwn ? local : null);
     const name = $("player" + slot + "ProfileName");
@@ -814,16 +819,21 @@ function renderMatchProfiles(state = gameState) {
     const losses = $("player" + slot + "ProfileLosses");
     const streak = $("player" + slot + "ProfileStreak");
     if (!name) return;
+
     if (!data) {
-      name.textContent = isOwn ? "Profil Bağlanmadı" : "Rakip Bekleniyor";
+      name.textContent = isOwn
+        ? "Profil Bağlanmadı"
+        : (opponentName || "Oyuncu " + slot);
       wins.textContent = losses.textContent = streak.textContent = "—";
       return;
     }
-    name.textContent = data.username || (isOwn ? "Sen" : "Rakip");
+
+    name.textContent = data.username || (isOwn ? "Sen" : (opponentName || "Rakip"));
     wins.textContent = Number(data.wins) || 0;
     losses.textContent = Number(data.losses) || 0;
     streak.textContent = Number(data.streak) || 0;
   }
+
   paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
   paint(2, p2 || (ownSlot === 2 ? local : null), ownSlot === 2);
 }
@@ -1162,12 +1172,14 @@ async function refreshState() {
     await bindCurrentProfileToRoom();
     const state = await rpc("get_game_state", { p_token: playerToken });
     gameState = state;
-    renderMatchProfiles(state);
 
     if (state.player !== undefined && state.player !== null) {
       playerNumber = Number(state.player);
       saveSession();
     }
+
+    // Oyuncu numarası kesinleştikten sonra profilleri doğru taraflara yerleştir.
+    renderMatchProfiles(state);
 
     if (previousState) await recordProfileResult(state, previousState);
 
@@ -1194,7 +1206,16 @@ async function refreshState() {
       hideGameResult();
       setCoinMessage("");
 
-      if (!state.opponent_joined) setTurnMessage("Rakip Bekleniyor", "#ff5364");
+      const opponentProfile = Number(playerNumber) === 1
+        ? state.player2_profile
+        : state.player1_profile;
+      const opponentJoined = Boolean(state.opponent_joined || opponentProfile);
+      const opponentName = opponentProfile && opponentProfile.username
+        ? opponentProfile.username
+        : (state.opponent_username || state.opponent_name ||
+          (Number(playerNumber) === 1 ? state.player2_username : state.player1_username));
+
+      if (!opponentJoined) setTurnMessage((opponentName || "Rakip") + " Bekleniyor", "#ff5364");
       else if (!ownSecret && !state.opponent_locked) setTurnMessage("İki Oyuncunun da Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
       else if (ownSecret && !state.opponent_locked) setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
       else if (!ownSecret && state.opponent_locked) setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
