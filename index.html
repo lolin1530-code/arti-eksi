@@ -8,34 +8,51 @@
 </head>
 <body>
   <main class="container">
-    <h1>ARTI EKSİ</h1>
+    <section id="connectionScreen" class="landing-screen">
+      <header class="landing-hero">
+        <div class="landing-brand-mark">±</div>
+        <p class="landing-eyebrow">İKİ KİŞİ · DÖRT RAKAM · TEK KAZANAN</p>
+        <h1>ARTI <span>EKSİ</span></h1>
+        <p class="landing-subtitle">Rakibinin sayısını çöz. Hamlelerini planla. Oyunu kazan.</p>
+        <div class="landing-rule"><span></span><i>●</i><span></span></div>
+      </header>
 
-    <section id="connectionScreen">
-      <div class="panel">
-        <h2>Supabase Bağlantısı</h2>
-        <label for="projectUrl">Project URL</label>
-        <input id="projectUrl" type="url" placeholder="https://....supabase.co">
-        <label for="apiKey">Publishable Key</label>
-        <input id="apiKey" type="text" placeholder="sb_publishable_...">
-        <button id="connectBtn" type="button">Bağlan</button>
-        <p id="connectionStatus">Bağlantı bekleniyor.</p>
-      </div>
+      <section class="connection-panel">
+        <div class="landing-section-heading">
+          <div class="landing-section-icon">⌁</div>
+          <div><h2>Sunucu bağlantısı</h2><p>Oyuna girmek için bağlantı bilgilerini gir.</p></div>
+        </div>
+        <div class="connection-fields">
+          <div class="landing-field"><label for="projectUrl">Project URL</label><input id="projectUrl" type="url" placeholder="https://....supabase.co"></div>
+          <div class="landing-field"><label for="apiKey">Publishable Key</label><input id="apiKey" type="text" placeholder="sb_publishable_..."></div>
+          <button id="connectBtn" type="button">Bağlan <span>↗</span></button>
+        </div>
+        <p id="connectionStatus" class="landing-status">Bağlantı bekleniyor.</p>
+      </section>
 
-      <div class="panel">
-        <h2>Oyun Odası</h2>
-        <button id="createRoomBtn" type="button">Yeni Oda Oluştur</button>
-        <p class="hint">VEYA</p>
-        <label for="roomCode">Oda Kodu</label>
-        <input id="roomCode" type="text" maxlength="6" placeholder="Arkadaşının oda kodu">
-        <button id="joinRoomBtn" type="button">Odaya Katıl</button>
-        <p id="roomStatus">Henüz bir odaya bağlanmadın.</p>
-      </div>
+      <div class="landing-main-grid">
+        <section class="landing-room-card">
+          <div class="landing-card-topline"><span>01 / OYUNA BAŞLA</span><span class="landing-live-dot"></span></div>
+          <div class="landing-room-symbol">⚔</div>
+          <h2>Oyun Odası</h2>
+          <p class="landing-card-description">Kendi odanı kur veya arkadaşının odasına katıl.</p>
+          <button id="createRoomBtn" class="landing-create-btn" type="button"><span>＋</span> Yeni Oda Oluştur <b>→</b></button>
+          <div class="landing-or"><span></span> VEYA <span></span></div>
+          <label for="roomCode">ODA KODUNU GİR</label>
+          <div class="landing-join-row"><input id="roomCode" type="text" maxlength="6" placeholder="Örn. A1B2C3" autocomplete="off"><button id="joinRoomBtn" type="button" aria-label="Odaya katıl">→</button></div>
+          <p id="roomStatus" class="landing-status">Henüz bir odaya bağlanmadın.</p>
+        </section>
 
-      <div class="panel profile-entry-panel">
-        <h2>Oyuncu Profili</h2>
-        <p id="profileEntryText">Henüz bir profil oluşturmadın.</p>
-        <button id="openProfileBtn" type="button">+ Profil Oluştur</button>
+        <section class="landing-profile-card">
+          <div class="landing-card-topline"><span>02 / SENİ TANIYALIM</span><span>✦</span></div>
+          <div class="landing-profile-symbol">♙</div>
+          <h2>Oyuncu Profili</h2>
+          <p id="profileEntryText">Henüz bir profil oluşturmadın.</p>
+          <div class="landing-profile-benefits"><span>✦ İstatistiklerini takip et</span><span>✦ Başarımlarını biriktir</span><span>✦ Arkadaşlarını bul</span></div>
+          <button id="openProfileBtn" type="button">+ Profil Oluştur</button>
+        </section>
       </div>
+      <footer class="landing-footer"><span>STRATEJİNİ KONUŞTUR.</span><span>ARTI EKSİ ©</span></footer>
     </section>
 
     <section id="gameScreen" class="hidden">
