@@ -22,6 +22,13 @@ let achievementToastQueue = [];
 let achievementToastActive = false;
 let roomProfileTitles = {};
 let roomProfileTitleFetches = new Set();
+let roomProfileAvatars = {};
+let roomProfileAvatarFetches = new Set();
+let avatarCanvasContext = null;
+let avatarDrawing = false;
+let avatarBrushColor = "#171923";
+let avatarIsEraser = false;
+let avatarUndoStack = [];
 
 const achievementCatalog = [
   { key: "first_blood_1", category: "firstblood", title: "İlk Kan", description: "1 galibiyete ulaş.", threshold: 1, icon: "🩸" },
@@ -168,6 +175,7 @@ function showProfileView() {
   renderProfile();
   refreshAchievements();
   loadEquippedProfileTitle();
+  loadProfileAvatar();
 }
 
 async function createOrUpdateProfile() {
@@ -382,6 +390,7 @@ function renderProfile() {
   const winRate = total > 0 ? (wins / total) * 100 : 0;
 
   const equippedTitle = achievementCatalog.find(item => item.key === playerProfile.equippedTitleKey);
+  renderProfileAvatar(playerProfile.avatarData || "");
   paintProfileName($("profileDisplayName"), playerProfile.username, equippedTitle ? equippedTitle.key : "");
   const titleLine = $("profileEquippedTitle");
   if (titleLine) titleLine.textContent = "";
@@ -558,9 +567,170 @@ async function fetchRoomProfileTitle(profileId) {
     if (gameState) renderMatchProfiles();
   }
 }
-function paintProfileName(element, username, titleKey) {
+function renderProfileAvatar(data) {
+  const image = $("profileAvatarImage");
+  const letter = $("profileAvatarLetter");
+  if (!image || !letter) return;
+  if (data) {
+    image.src = data;
+    image.classList.remove("hidden");
+    letter.classList.add("hidden");
+  } else {
+    image.removeAttribute("src");
+    image.classList.add("hidden");
+    letter.classList.remove("hidden");
+  }
+}
+
+async function saveProfileAvatar(data) {
+  if (!playerProfile || !playerProfile.synced) throw new Error("Önce profilini sunucuya eşitle.");
+  const result = await rpc("set_profile_avatar", {
+    p_profile_id: playerProfile.id,
+    p_profile_token: playerProfile.token,
+    p_avatar_data: data || null
+  });
+  const row = Array.isArray(result) ? result[0] : result;
+  if (result && result.success === false) throw new Error(result.message || "PP kaydedilemedi.");
+  if (row && row.success === false) throw new Error(row.message || "PP kaydedilemedi.");
+  playerProfile.avatarData = data || "";
+  roomProfileAvatars[playerProfile.id] = data || "";
+  saveProfile();
+  renderProfile();
+  renderMatchProfiles();
+}
+
+async function loadProfileAvatar() {
+  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
+  try {
+    const result = await rpc("get_profile_avatar", { p_profile_id: playerProfile.id });
+    const row = Array.isArray(result) ? result[0] : result;
+    playerProfile.avatarData = row && row.avatar_data ? row.avatar_data : "";
+    roomProfileAvatars[playerProfile.id] = playerProfile.avatarData;
+    saveProfile();
+    renderProfileAvatar(playerProfile.avatarData);
+    renderMatchProfiles();
+  } catch (error) {
+    $("avatarEditorStatus").textContent = "PP yüklenemedi: " + error.message;
+  }
+}
+
+async function fetchRoomProfileAvatar(profileId) {
+  if (!profileId || roomProfileAvatars[profileId] !== undefined || roomProfileAvatarFetches.has(profileId)) return;
+  roomProfileAvatarFetches.add(profileId);
+  try {
+    const result = await rpc("get_profile_avatar", { p_profile_id: profileId });
+    const row = Array.isArray(result) ? result[0] : result;
+    roomProfileAvatars[profileId] = row && row.avatar_data ? row.avatar_data : "";
+  } catch (error) {
+    roomProfileAvatars[profileId] = "";
+    console.warn("Oyuncu PP'si alınamadı:", error);
+  } finally {
+    roomProfileAvatarFetches.delete(profileId);
+    if (gameState) renderMatchProfiles();
+  }
+}
+
+function setupAvatarCanvas() {
+  const canvas = $("avatarCanvas");
+  if (!canvas || canvas.dataset.ready) return;
+  canvas.dataset.ready = "true";
+  avatarCanvasContext = canvas.getContext("2d");
+  avatarCanvasContext.fillStyle = "#ffffff";
+  avatarCanvasContext.fillRect(0, 0, 256, 256);
+  const point = event => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) * canvas.width / rect.width, y: (event.clientY - rect.top) * canvas.height / rect.height };
+  };
+  const start = event => {
+    event.preventDefault();
+    avatarDrawing = true;
+    canvas.setPointerCapture(event.pointerId);
+    const p = point(event);
+    avatarUndoStack.push(canvas.toDataURL("image/png"));
+    if (avatarUndoStack.length > 20) avatarUndoStack.shift();
+    avatarCanvasContext.beginPath();
+    avatarCanvasContext.moveTo(p.x, p.y);
+    avatarCanvasContext.lineCap = "round";
+    avatarCanvasContext.lineJoin = "round";
+    avatarCanvasContext.lineWidth = Number($("avatarBrushSize").value);
+    avatarCanvasContext.strokeStyle = avatarIsEraser ? "#ffffff" : avatarBrushColor;
+    avatarCanvasContext.lineTo(p.x + 0.1, p.y + 0.1);
+    avatarCanvasContext.stroke();
+  };
+  const move = event => {
+    if (!avatarDrawing) return;
+    event.preventDefault();
+    const p = point(event);
+    avatarCanvasContext.lineTo(p.x, p.y);
+    avatarCanvasContext.stroke();
+  };
+  const stop = () => {
+    if (!avatarDrawing) return;
+    avatarDrawing = false;
+    avatarCanvasContext.closePath();
+  };
+  canvas.addEventListener("pointerdown", start);
+  canvas.addEventListener("pointermove", move);
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+}
+
+function restoreAvatarCanvas(data) {
+  const image = new Image();
+  image.onload = () => {
+    avatarCanvasContext.clearRect(0, 0, 256, 256);
+    avatarCanvasContext.fillStyle = "#ffffff";
+    avatarCanvasContext.fillRect(0, 0, 256, 256);
+    avatarCanvasContext.drawImage(image, 0, 0, 256, 256);
+  };
+  image.src = data;
+}
+
+function openAvatarEditor() {
+  if (!playerProfile || !playerProfile.synced) {
+    $("avatarEditorStatus").textContent = "PP çizmek için önce profilini sunucuya eşitle.";
+    return;
+  }
+  $("avatarEditorPanel").classList.remove("hidden");
+  $("toggleAvatarEditorBtn").textContent = "Editörü Kapat";
+  setupAvatarCanvas();
+  restoreAvatarCanvas(playerProfile.avatarData || "");
+  $("avatarEditorStatus").textContent = "";
+}
+
+function closeAvatarEditor() {
+  $("avatarEditorPanel").classList.add("hidden");
+  $("toggleAvatarEditorBtn").textContent = "PP Çiz";
+}
+
+async function saveAvatarDrawing() {
+  const status = $("avatarEditorStatus");
+  const button = $("avatarSaveBtn");
+  button.disabled = true;
+  status.textContent = "PP kaydediliyor...";
+  try {
+    const data = $("avatarCanvas").toDataURL("image/png");
+    if (data.length > 180000) throw new Error("Çizimin boyutu çok büyük. Biraz sadeleştirip tekrar dene.");
+    await saveProfileAvatar(data);
+    status.textContent = "PP başarıyla kaydedildi!";
+    closeAvatarEditor();
+  } catch (error) {
+    status.textContent = "PP kaydedilemedi: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function paintProfileName(element, username, titleKey, avatarData) {
   if (!element) return;
   element.innerHTML = "";
+  if (avatarData) {
+    const avatar = document.createElement("img");
+    avatar.className = "match-player-avatar";
+    avatar.src = avatarData;
+    avatar.alt = "";
+    element.appendChild(avatar);
+  }
   const name = document.createElement("span");
   name.className = "match-player-username";
   name.textContent = username || "Oyuncu";
@@ -1134,8 +1304,8 @@ function renderMatchProfiles(state = gameState) {
     (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
   );
   const local = playerProfile;
-  if (p1 && p1.id) fetchRoomProfileTitle(p1.id);
-  if (p2 && p2.id) fetchRoomProfileTitle(p2.id);
+  if (p1 && p1.id) { fetchRoomProfileTitle(p1.id); fetchRoomProfileAvatar(p1.id); }
+  if (p2 && p2.id) { fetchRoomProfileTitle(p2.id); fetchRoomProfileAvatar(p2.id); }
   if (local && local.id && local.equippedTitleKey) roomProfileTitles[local.id] = local.equippedTitleKey;
   currentOpponentName = (Number(playerNumber) === 1 ? p2 : p1)?.username ||
     opponentName ||
@@ -1165,7 +1335,10 @@ function renderMatchProfiles(state = gameState) {
     const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
       ? roomProfileTitles[data.id]
       : (isOwn && local ? local.equippedTitleKey : data.equipped_title_key);
-    paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), titleKey);
+    const avatarData = data.id && roomProfileAvatars[data.id] !== undefined
+      ? roomProfileAvatars[data.id]
+      : (isOwn && local ? local.avatarData : "");
+    paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), titleKey, avatarData);
     if (wins) wins.textContent = Number(data.wins) || 0;
     if (losses) losses.textContent = Number(data.losses) || 0;
     if (streak) streak.textContent = Number(data.streak) || 0;
@@ -1872,6 +2045,39 @@ function initializeGame() {
   $("backToProfileCreateBtn").addEventListener("click", showProfileCreate);
   $("recoverProfileBtn").addEventListener("click", recoverProfile);
   $("copyRecoveryCodeBtn").addEventListener("click", copyRecoveryCode);
+  $("toggleAvatarEditorBtn").addEventListener("click", () => {
+    if ($("avatarEditorPanel").classList.contains("hidden")) openAvatarEditor();
+    else closeAvatarEditor();
+  });
+  $("avatarSaveBtn").addEventListener("click", saveAvatarDrawing);
+  $("avatarCancelBtn").addEventListener("click", closeAvatarEditor);
+  $("avatarUndoBtn").addEventListener("click", () => {
+    if (avatarUndoStack.length) restoreAvatarCanvas(avatarUndoStack.pop());
+  });
+  $("avatarClearBtn").addEventListener("click", () => {
+    if (!avatarCanvasContext) return;
+    avatarUndoStack.push($("avatarCanvas").toDataURL("image/png"));
+    avatarCanvasContext.fillStyle = "#ffffff";
+    avatarCanvasContext.fillRect(0, 0, 256, 256);
+  });
+  $("avatarEraserBtn").addEventListener("click", () => {
+    avatarIsEraser = !avatarIsEraser;
+    $("avatarEraserBtn").classList.toggle("active", avatarIsEraser);
+  });
+  document.querySelectorAll(".avatar-color").forEach(button => {
+    button.addEventListener("click", () => {
+      avatarBrushColor = button.dataset.avatarColor;
+      avatarIsEraser = false;
+      $("avatarEraserBtn").classList.remove("active");
+      document.querySelectorAll(".avatar-color").forEach(item => item.classList.toggle("active", item === button));
+    });
+  });
+  $("avatarCustomColor").addEventListener("input", event => {
+    avatarBrushColor = event.target.value;
+    avatarIsEraser = false;
+    $("avatarEraserBtn").classList.remove("active");
+    document.querySelectorAll(".avatar-color").forEach(item => item.classList.remove("active"));
+  });
   $("closeRivalryBtn").addEventListener("click", closeRivalry);
   $("closeRivalryFooterBtn").addEventListener("click", closeRivalry);
   $("rivalryModal").addEventListener("click", event => {
