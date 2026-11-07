@@ -43,6 +43,7 @@ let friendData = { friends: [], incoming: [], outgoing: [] };
 let boundProfileRoomKey = "";
 let profileBindingPromise = null;
 let currentOpponentName = "Karşı taraf";
+let roomProfileCache = {};
 let opponentProfileRefreshAt = 0;
 let lastFeedbackStatus = "";
 let lastFeedbackRoom = "";
@@ -410,33 +411,40 @@ async function recordProfileResult(state) {
     ? playerProfile.processedMatches : [];
 
   if (playerProfile.processedMatches.includes(matchKey)) return;
-
-  // Yerel işaret, aynı maç için paralel yoklamaların çift kayıt göndermesini önler.
-  playerProfile.processedMatches.push(matchKey);
-  saveProfile();
+  if (window.__artiRecordingMatches && window.__artiRecordingMatches.has(matchKey)) return;
+  if (!window.__artiRecordingMatches) window.__artiRecordingMatches = new Set();
+  window.__artiRecordingMatches.add(matchKey);
 
   const won = state.winner === null || state.winner === undefined
     ? null : Number(state.winner) === Number(playerNumber);
 
   try {
-    const result = await rpc("record_profile_result", {
-      p_id: playerProfile.id,
-      p_token: playerProfile.token,
-      p_match_key: matchKey,
-      p_won: won
+    // Sunucu tek çağrıda iki oyuncunun sonucunu da yazar. Böylece bir
+    // oyuncunun tarayıcısı kapanırsa karşı tarafın galibiyeti kaybolmaz.
+    const result = await rpc("record_room_profile_results", {
+      p_token: playerToken,
+      p_profile_id: playerProfile.id,
+      p_profile_token: playerProfile.token,
+      p_match_key: matchKey
     });
 
     if (result && result.success === false) {
-      throw new Error(result.message || "Maç sonucu kaydedilemedi.");
+      throw new Error(result.message || "Maç sonuçları kaydedilemedi.");
+    }
+
+    if (!playerProfile.processedMatches.includes(matchKey)) {
+      playerProfile.processedMatches.push(matchKey);
+      saveProfile();
     }
   } catch (error) {
-    playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
-    saveProfile();
-    console.error("Profil maç sonucu kaydedilemedi:", error);
+    console.error("İki oyuncunun maç sonucu kaydedilemedi:", error);
     return;
+  } finally {
+    window.__artiRecordingMatches.delete(matchKey);
   }
 
-  // Sonuç kaydı başarılıysa, başarım hatası sonucu tekrar kaydettirmesin.
+  // Her oyuncu kendi başarım çağrısını yapar; istatistikler ise yukarıdaki
+  // ortak sunucu işlemiyle iki profil için de güvence altına alınır.
   try {
     const achievementResult = await rpc("unlock_match_achievements", {
       p_player_token: playerToken,
@@ -453,7 +461,6 @@ async function recordProfileResult(state) {
     });
   }
 }
-
 async function refreshAchievements(newKeys = []) {
   if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
   try {
@@ -970,8 +977,29 @@ function setCoinMessage(message) {
 }
 
 function renderMatchProfiles(state = gameState) {
-  const p1 = state && state.player1_profile ? state.player1_profile : null;
-  const p2 = state && state.player2_profile ? state.player2_profile : null;
+  const cacheKey = "arti_room_profiles_" + (state && state.room_code ? state.room_code : roomCode);
+  let cached = {};
+  try {
+    cached = JSON.parse(localStorage.getItem(cacheKey) || "{}") || {};
+  } catch { cached = {}; }
+
+  let p1 = state && state.player1_profile ? state.player1_profile : null;
+  let p2 = state && state.player2_profile ? state.player2_profile : null;
+
+  // Sunucu yanıtında profil alanı geçici olarak boş gelirse, aynı odada
+  // daha önce doğrulanmış kullanıcı adlarını koru (özellikle yeniden oyna).
+  if (p1 && p1.username) cached.player1 = p1;
+  else if (state && state.player1_username) cached.player1 = { ...(cached.player1 || {}), username: state.player1_username };
+  if (p2 && p2.username) cached.player2 = p2;
+  else if (state && state.player2_username) cached.player2 = { ...(cached.player2 || {}), username: state.player2_username };
+
+  p1 = p1 || cached.player1 || null;
+  p2 = p2 || cached.player2 || null;
+
+  if (cached.player1 || cached.player2) {
+    try { localStorage.setItem(cacheKey, JSON.stringify(cached)); } catch {}
+  }
+
   const ownSlot = Number(playerNumber) === 1 ? 1 : 2;
   const opponentName = state && (
     state.opponent_username || state.opponent_name ||
@@ -979,9 +1007,9 @@ function renderMatchProfiles(state = gameState) {
   );
   const local = playerProfile;
   currentOpponentName = (Number(playerNumber) === 1 ? p2 : p1)?.username ||
-    (state && (state.opponent_username || state.opponent_name ||
-      (Number(playerNumber) === 1 ? state.player2_username : state.player1_username))) ||
+    opponentName ||
     (Number(playerNumber) === 1 ? "Oyuncu 2" : "Oyuncu 1");
+
   const opponentHeading = $("opponentGuessesHeading");
   if (opponentHeading) opponentHeading.textContent = currentOpponentName + " adlı oyuncunun tahminleri";
 
@@ -995,22 +1023,23 @@ function renderMatchProfiles(state = gameState) {
 
     if (!data) {
       name.textContent = isOwn
-        ? "Profil Bağlanmadı"
-        : (opponentName || "Oyuncu " + slot);
-      wins.textContent = losses.textContent = streak.textContent = "—";
+        ? (local && local.username ? local.username : "Profil Bağlanmadı")
+        : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
+      if (wins) wins.textContent = "—";
+      if (losses) losses.textContent = "—";
+      if (streak) streak.textContent = "—";
       return;
     }
 
     name.textContent = data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot));
-    wins.textContent = Number(data.wins) || 0;
-    losses.textContent = Number(data.losses) || 0;
-    streak.textContent = Number(data.streak) || 0;
+    if (wins) wins.textContent = Number(data.wins) || 0;
+    if (losses) losses.textContent = Number(data.losses) || 0;
+    if (streak) streak.textContent = Number(data.streak) || 0;
   }
 
   paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
   paint(2, p2 || (ownSlot === 2 ? local : null), ownSlot === 2);
 }
-
 async function bindCurrentProfileToRoom() {
   if (!playerToken || !playerProfile || !projectUrl || !apiKey) return;
   if (profileBindingPromise) return profileBindingPromise;
@@ -1399,9 +1428,13 @@ async function refreshState() {
     $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
 
     if (lastStatus === "finished" && state.status === "waiting") {
+      // Aynı oda yeniden başlatıldığında profil bağları sunucuda sıfırlanmış
+      // olabilir. Önceki bağlama anahtarını temizleyip tekrar bağlanmasını sağla.
+      boundProfileRoomKey = "";
       clearRoundData();
       lastFeedbackStatus = "";
       $("gameResultBar").classList.remove("result-last-chance", "result-win", "result-lose", "result-draw", "result-enter");
+      renderMatchProfiles(state);
     }
 
     const history = Array.isArray(state.history) ? state.history : [];
