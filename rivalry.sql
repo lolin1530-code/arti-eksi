@@ -49,10 +49,16 @@ BEGIN
   END IF;
 
   SELECT
-    count(*) FILTER (WHERE mine.won IS TRUE)::integer,
-    count(*) FILTER (WHERE mine.won IS FALSE)::integer,
-    count(*) FILTER (WHERE mine.won IS NULL)::integer,
-    count(*)::integer
+    count(DISTINCT mine.match_key) FILTER (
+      WHERE mine.won IS TRUE AND mine.is_draw IS NOT TRUE
+    )::integer,
+    count(DISTINCT mine.match_key) FILTER (
+      WHERE mine.won IS FALSE AND mine.is_draw IS NOT TRUE
+    )::integer,
+    count(DISTINCT mine.match_key) FILTER (
+      WHERE mine.is_draw IS TRUE
+    )::integer,
+    count(DISTINCT mine.match_key)::integer
   INTO v_my_wins, v_opponent_wins, v_draws, v_total
   FROM public.player_match_results mine
   JOIN public.player_match_results theirs
