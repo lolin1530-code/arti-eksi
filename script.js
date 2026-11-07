@@ -28,7 +28,7 @@ const achievementCatalog = [
   { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100 },
   { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan." },
   { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet." },
-  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Rakip -4 almışken maçı kazan." },
+  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan." },
   { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true },
   { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true },
   { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "5 galibiyetlik yenilmezlik serisine ulaş.", threshold: 5 }
@@ -42,6 +42,10 @@ const achievementGroups = [
 let friendData = { friends: [], incoming: [], outgoing: [] };
 let boundProfileRoomKey = "";
 let profileBindingPromise = null;
+let currentOpponentName = "Karşı taraf";
+let opponentProfileRefreshAt = 0;
+let lastFeedbackStatus = "";
+let lastFeedbackRoom = "";
 
 const $ = id => document.getElementById(id);
 
@@ -594,18 +598,24 @@ async function searchPlayer() {
 }
 
 function getFriendId(item) {
-  return item.profile_id || item.friend_id || item.id || item.user_id || "";
+  return item.profile_id || item.friend_id || item.friend_profile_id || item.id || item.user_id || "";
 }
 function getRequestTargetId(item) {
-  return item.receiver_id || item.target_id || item.profile_id || "";
+  return item.receiver_id || item.target_id || item.profile_id || item.receiver_profile_id || item.to_profile_id || "";
 }
 
 function getRequestId(item) {
-  return item.request_id || item.id || "";
+  if (!item) return "";
+  return item.request_id || item.friend_request_id || item.requestId ||
+    item.friendRequestId || item.id || item.uuid ||
+    (item.request && (item.request.id || item.request.request_id)) ||
+    (item.friend_request && (item.friend_request.id || item.friend_request.request_id)) || "";
 }
 
 function getRequestUsername(item) {
-  return item.username || item.requester_username || item.receiver_username || "Oyuncu";
+  return item.username || item.requester_username || item.sender_username ||
+    item.receiver_username || (item.requester && item.requester.username) ||
+    (item.sender && item.sender.username) || "Oyuncu";
 }
 
 function createFriendCard(username, stats, actionLabel, action) {
@@ -658,6 +668,9 @@ async function sendFriendRequest(targetId) {
 
 async function respondFriendRequest(requestId, accept) {
   try {
+    if (!requestId) {
+      throw new Error("İstek kimliği yüklenemedi. Arkadaşlık isteği verisini kontrol etmemiz gerekiyor.");
+    }
     const result = await rpc("respond_friend_request", {
       p_id: playerProfile.id,
       p_token: playerProfile.token,
@@ -688,9 +701,79 @@ async function loadFriendData() {
     };
 
     renderFriendData();
+    await refreshFriendStats();
   } catch (error) {
     $("friendStatus").textContent = error.message;
   }
+}
+
+async function refreshFriendStats() {
+  if (!playerProfile || !playerProfile.synced || !Array.isArray(friendData.friends)) return;
+  const updates = friendData.friends.map(async item => {
+    const id = getFriendId(item);
+    if (!id) return;
+    try {
+      const result = await rpc("get_player_profile", { p_id: id });
+      const profile = Array.isArray(result) ? result[0] : result;
+      if (!profile) return;
+      item.username = profile.username || item.username || item.friend_username;
+      item.wins = Number(profile.wins) || 0;
+      item.losses = Number(profile.losses) || 0;
+      item.streak = Number(profile.streak) || 0;
+    } catch (error) {
+      console.warn("Arkadaş istatistiği yenilenemedi:", error);
+    }
+  });
+  await Promise.all(updates);
+  renderFriendData();
+}
+
+async function openRivalry(friend) {
+  const friendId = getFriendId(friend);
+  if (!friendId) {
+    $("friendStatus").textContent = "Arkadaş profil kimliği alınamadı.";
+    return;
+  }
+
+  const friendName = friend.username || friend.friend_username || "Arkadaşın";
+  $("rivalryTitle").textContent = (playerProfile.username || "Sen") + " VS " + friendName;
+  $("rivalryStatus").textContent = "İstatistikler yükleniyor...";
+  $("rivalryMyWins").textContent = "—";
+  $("rivalryTheirWins").textContent = "—";
+  $("rivalryDraws").textContent = "—";
+  $("rivalryTotal").textContent = "—";
+  $("rivalryMyLabel").textContent = (playerProfile.username || "Sen") + " W";
+  $("rivalryTheirLabel").textContent = friendName + " W";
+  $("rivalryModal").classList.remove("hidden");
+
+  try {
+    const result = await rpc("get_rivalry_stats", {
+      p_id: playerProfile.id,
+      p_token: playerProfile.token,
+      p_opponent_id: friendId
+    });
+    const stats = Array.isArray(result) ? result[0] : result;
+    if (!stats || stats.success === false) {
+      throw new Error((stats && stats.message) || "Rekabet istatistikleri alınamadı.");
+    }
+    const myWins = Number(stats.my_wins ?? stats.wins ?? 0) || 0;
+    const theirWins = Number(stats.opponent_wins ?? stats.their_wins ?? stats.losses ?? 0) || 0;
+    const draws = Number(stats.draws) || 0;
+    const total = Number(stats.total ?? (myWins + theirWins + draws)) || 0;
+    $("rivalryMyWins").textContent = myWins;
+    $("rivalryTheirWins").textContent = theirWins;
+    $("rivalryDraws").textContent = draws;
+    $("rivalryTotal").textContent = total;
+    $("rivalryStatus").textContent = total
+      ? "Geçmişteki bütün ortak maçlarınız hesaba katılıyor."
+      : "Henüz kayıtlı bir karşılaşmanız bulunmuyor.";
+  } catch (error) {
+    $("rivalryStatus").textContent = error.message;
+  }
+}
+
+function closeRivalry() {
+  $("rivalryModal").classList.add("hidden");
 }
 
 function renderFriendData() {
@@ -746,12 +829,14 @@ function renderFriendData() {
       const losses = Number(item.losses) || 0;
       const total = wins + losses;
       const rate = total ? ((wins / total) * 100).toFixed(1).replace(".", ",") : "0";
-      friends.appendChild(createFriendCard(
+      const card = createFriendCard(
         username,
         `Galibiyet: ${wins} · Mağlubiyet: ${losses} · Başarı: %${rate}`,
-        null,
-        null
-      ));
+        "Rekabeti Gör",
+        () => openRivalry(item)
+      );
+      card.classList.add("friend-card-with-rivalry");
+      friends.appendChild(card);
     });
   }
 }
@@ -791,26 +876,88 @@ function enableTurnAudio() {
   if (turnAudioContext.state === "suspended") turnAudioContext.resume().catch(() => {});
 }
 
+function playTone(frequency, startOffset, duration, peakGain, endFrequency = null) {
+  if (!turnAudioContext) return;
+  const oscillator = turnAudioContext.createOscillator();
+  const gain = turnAudioContext.createGain();
+  const start = turnAudioContext.currentTime + startOffset;
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  if (endFrequency) oscillator.frequency.linearRampToValueAtTime(endFrequency, start + duration * 0.45);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(peakGain, start + 0.025);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain);
+  gain.connect(turnAudioContext.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.01);
+}
+
 function playTurnSound() {
   if (!turnAudioContext) return;
   const play = () => {
     if (!turnAudioContext) return;
-    const oscillator = turnAudioContext.createOscillator();
-    const gain = turnAudioContext.createGain();
-    const now = turnAudioContext.currentTime;
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(660, now);
-    oscillator.frequency.setValueAtTime(880, now + 0.08);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.15, now + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-    oscillator.connect(gain);
-    gain.connect(turnAudioContext.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.23);
+    playTone(660, 0, 0.24, 0.19, 880);
   };
   if (turnAudioContext.state === "suspended") turnAudioContext.resume().then(play).catch(() => {});
   else play();
+}
+
+function vibrate(pattern) {
+  try {
+    if ("vibrate" in navigator) navigator.vibrate(pattern);
+  } catch (error) {
+    // Titreşim desteklenmiyorsa oyun normal şekilde devam eder.
+  }
+}
+
+function playLastChanceFeedback() {
+  if (turnAudioContext && turnAudioContext.state !== "closed") {
+    if (turnAudioContext.state === "suspended") turnAudioContext.resume().then(() => {
+      playTone(440, 0, 0.28, 0.17, 330);
+      playTone(520, 0.22, 0.30, 0.19, 390);
+    }).catch(() => {});
+    else {
+      playTone(440, 0, 0.28, 0.17, 330);
+      playTone(520, 0.22, 0.30, 0.19, 390);
+    }
+  }
+  vibrate([45, 35, 45]);
+  animateGameResult("last-chance");
+}
+
+function playFinishedFeedback(won, draw = false) {
+  if (turnAudioContext && turnAudioContext.state !== "closed") {
+    const play = () => {
+      if (draw) {
+        playTone(520, 0, 0.34, 0.2, 520);
+        playTone(520, 0.28, 0.34, 0.2, 520);
+      } else if (won) {
+        playTone(523, 0, 0.28, 0.22, 659);
+        playTone(659, 0.20, 0.30, 0.23, 784);
+        playTone(784, 0.42, 0.48, 0.24, 1047);
+      } else {
+        playTone(392, 0, 0.36, 0.20, 330);
+        playTone(330, 0.28, 0.48, 0.21, 262);
+      }
+    };
+    if (turnAudioContext.state === "suspended") turnAudioContext.resume().then(play).catch(() => {});
+    else play();
+  }
+
+  if (draw) vibrate([55, 45, 55]);
+  else if (won) vibrate([75, 55, 100]);
+  else vibrate([140]);
+  animateGameResult(draw ? "draw" : won ? "win" : "lose");
+}
+
+function animateGameResult(type) {
+  const bar = $("gameResultBar");
+  const text = $("gameResultText");
+  if (!bar || !text) return;
+  bar.classList.remove("result-last-chance", "result-win", "result-lose", "result-draw", "result-enter");
+  void bar.offsetWidth;
+  bar.classList.add("result-" + type, "result-enter");
 }
 
 function setCoinMessage(message) {
@@ -828,6 +975,12 @@ function renderMatchProfiles(state = gameState) {
     (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
   );
   const local = playerProfile;
+  currentOpponentName = (Number(playerNumber) === 1 ? p2 : p1)?.username ||
+    (state && (state.opponent_username || state.opponent_name ||
+      (Number(playerNumber) === 1 ? state.player2_username : state.player1_username))) ||
+    (Number(playerNumber) === 1 ? "Oyuncu 2" : "Oyuncu 1");
+  const opponentHeading = $("opponentGuessesHeading");
+  if (opponentHeading) opponentHeading.textContent = currentOpponentName + " adlı oyuncunun tahminleri";
 
   function paint(slot, data, isOwn) {
     data = data || (isOwn ? local : null);
@@ -845,7 +998,7 @@ function renderMatchProfiles(state = gameState) {
       return;
     }
 
-    name.textContent = data.username || (isOwn ? "Sen" : (opponentName || "Rakip"));
+    name.textContent = data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot));
     wins.textContent = Number(data.wins) || 0;
     losses.textContent = Number(data.losses) || 0;
     streak.textContent = Number(data.streak) || 0;
@@ -1181,7 +1334,7 @@ function showStartingPlayerMessage() {
   }
   const currentTurn = Number(gameState.turn);
   if (currentTurn === playerNumber) setTurnMessage("Tahmine Başla", "#27c982");
-  else setTurnMessage("Rakip Tahmine Başlıyor", "#ff5364");
+  else setTurnMessage(currentOpponentName + " tahmine başlıyor", "#ff5364");
   startMessageShown = true;
 }
 
@@ -1220,8 +1373,24 @@ async function refreshState() {
     const currentIsMyTurn = ["playing", "last_chance"].includes(state.status) && Number(state.turn) === Number(playerNumber);
     const gameJustStartedOnMyTurn = previousState && previousState.status === "waiting" && state.status === "playing" && currentIsMyTurn;
     const turnPassedToMe = previousWasActive && !previousWasMyTurn && currentIsMyTurn;
+    const roomChanged = lastFeedbackRoom && lastFeedbackRoom !== (state.room_code || roomCode);
+    if (roomChanged) lastFeedbackStatus = "";
 
-    if (gameJustStartedOnMyTurn || turnPassedToMe) playTurnSound();
+    if (gameJustStartedOnMyTurn || turnPassedToMe) {
+      playTurnSound();
+      vibrate([25]);
+    }
+    if (previousState && previousState.status !== "last_chance" && state.status === "last_chance" && lastFeedbackStatus !== "last_chance") {
+      playLastChanceFeedback();
+      lastFeedbackStatus = "last_chance";
+    }
+    if (previousState && previousState.status !== "finished" && state.status === "finished" && lastFeedbackStatus !== "finished") {
+      const isDraw = state.winner === null || state.winner === undefined;
+      const isWin = !isDraw && Number(state.winner) === Number(playerNumber);
+      playFinishedFeedback(isWin, isDraw);
+      lastFeedbackStatus = "finished";
+    }
+    lastFeedbackRoom = state.room_code || roomCode;
 
     roomCode = state.room_code || roomCode;
     $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
@@ -1285,14 +1454,15 @@ async function refreshState() {
       const myTurn = Number(state.turn) === playerNumber;
       $("guessBtn").disabled = !myTurn || !ownSecret;
       $("gameResultBar").classList.remove("hidden");
+      $("gameResultText").className = "last-chance";
       $("restartStatus").classList.add("hidden");
       $("restartBtn").classList.add("hidden");
       setTurnMessage("");
       if (myTurn) {
-        $("gameResultText").textContent = "SON ŞANSIN!";
+        $("gameResultText").textContent = "⚔ SON ŞANSIN!";
         $("gameResultText").style.color = "#e8c34d";
       } else {
-        $("gameResultText").textContent = "SON ŞANSINI DENİYOR!";
+        $("gameResultText").textContent = "⚔ " + currentOpponentName.toLocaleUpperCase("tr-TR") + " SON ŞANSINI DENİYOR!";
         $("gameResultText").style.color = "#e8c34d";
       }
     } else if (state.status === "finished") {
@@ -1301,16 +1471,17 @@ async function refreshState() {
       clearStartMessage();
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
+      $("gameResultText").className = "";
       $("restartBtn").classList.remove("hidden");
       setTurnMessage("");
       if (state.winner === null || state.winner === undefined) {
-        $("gameResultText").textContent = "BERABERE!";
+        $("gameResultText").textContent = "⚖ BERABERE!";
         $("gameResultText").style.color = "#e8c34d";
       } else if (Number(state.winner) === playerNumber) {
-        $("gameResultText").textContent = "KAZANDIN!";
+        $("gameResultText").textContent = "🏆 ZAFER! KAZANDIN!";
         $("gameResultText").style.color = "#27c982";
       } else {
-        $("gameResultText").textContent = "KAYBETTİN!";
+        $("gameResultText").textContent = "OYUN BİTTİ · KAYBETTİN";
         $("gameResultText").style.color = "#ff5364";
       }
       await updateRestartStatus();
@@ -1411,7 +1582,7 @@ function renderTurnIndicator() {
   const target = $(myTurn ? "myGuesses" : "opponentGuesses");
   if (!target) return;
 
-  const messageText = myTurn ? "Tahminin Bekleniyor..." : "Rakip Tahmin Yapıyor...";
+  const messageText = myTurn ? "Tahminin Bekleniyor..." : currentOpponentName + " tahmin yapıyor...";
   const turnKey = gameState.status + ":" + gameState.turn;
   const existing = document.querySelector(".guess-turn-message");
 
@@ -1527,6 +1698,11 @@ function initializeGame() {
   $("backToProfileCreateBtn").addEventListener("click", showProfileCreate);
   $("recoverProfileBtn").addEventListener("click", recoverProfile);
   $("copyRecoveryCodeBtn").addEventListener("click", copyRecoveryCode);
+  $("closeRivalryBtn").addEventListener("click", closeRivalry);
+  $("closeRivalryFooterBtn").addEventListener("click", closeRivalry);
+  $("rivalryModal").addEventListener("click", event => {
+    if (event.target === $("rivalryModal")) closeRivalry();
+  });
 
   $("profileUsername").addEventListener("keydown", event => {
     if (event.key === "Enter") createOrUpdateProfile();
@@ -1557,7 +1733,8 @@ function initializeGame() {
     if (event.target === $("profileModal")) closeProfile();
   });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !$("profileModal").classList.contains("hidden")) closeProfile();
+    if (event.key === "Escape" && !$("rivalryModal").classList.contains("hidden")) closeRivalry();
+    else if (event.key === "Escape" && !$("profileModal").classList.contains("hidden")) closeProfile();
   });
 
   document.querySelectorAll(".color-choice").forEach(button => {
