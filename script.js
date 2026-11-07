@@ -799,12 +799,14 @@ function renderFriendData() {
       const accept = document.createElement("button");
       accept.className = "friend-accept";
       accept.textContent = "Kabul Et";
-      accept.disabled = !requestId;\n      accept.addEventListener("click", () => respondFriendRequest(requestId, true));
+      accept.disabled = !requestId;
+      accept.addEventListener("click", () => respondFriendRequest(requestId, true));
 
       const reject = document.createElement("button");
       reject.className = "friend-reject";
       reject.textContent = "Reddet";
-      reject.disabled = !requestId;\n      reject.addEventListener("click", () => respondFriendRequest(requestId, false));
+      reject.disabled = !requestId;
+      reject.addEventListener("click", () => respondFriendRequest(requestId, false));
 
       actions.append(accept, reject);
       card.appendChild(actions);
