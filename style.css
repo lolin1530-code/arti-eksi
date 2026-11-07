@@ -378,3 +378,96 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
  .landing-footer{font-size:8px;letter-spacing:1.2px}
 }
 @media(max-width:380px){.connection-fields{grid-template-columns:1fr}.landing-hero h1{font-size:37px}}
+
+
+/* Son şans ve maç sonucu geri bildirimleri */
+#gameResultText {
+  line-height: 1.25;
+  letter-spacing: .3px;
+  transform-origin: center;
+}
+#gameResultBar.result-enter #gameResultText {
+  animation: resultPop .72s cubic-bezier(.18,.85,.25,1.25) both;
+}
+#gameResultBar.result-last-chance {
+  border-top-color: #e8b94d;
+  background: linear-gradient(90deg, #e8b94d12, transparent);
+}
+#gameResultBar.result-last-chance #gameResultText {
+  color: #ffd36b !important;
+  text-shadow: 0 0 18px #e8b94d55;
+}
+#gameResultBar.result-win {
+  border-top-color: #55d99b;
+  background: linear-gradient(90deg, #55d99b18, transparent);
+}
+#gameResultBar.result-win #gameResultText {
+  color: #72f0b1 !important;
+  text-shadow: 0 0 22px #55d99b66;
+}
+#gameResultBar.result-lose {
+  border-top-color: #ff7784;
+  background: linear-gradient(90deg, #ff778418, transparent);
+}
+#gameResultBar.result-lose #gameResultText {
+  color: #ff8993 !important;
+  text-shadow: 0 0 18px #ff536455;
+}
+#gameResultBar.result-draw {
+  border-top-color: #e8c34d;
+  background: linear-gradient(90deg, #e8c34d14, transparent);
+}
+@keyframes resultPop {
+  0% { opacity: 0; transform: translateY(12px) scale(.82); filter: blur(5px); }
+  65% { opacity: 1; transform: translateY(-2px) scale(1.05); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #gameResultBar.result-enter #gameResultText { animation: none; }
+}
+
+/* İkili rekabet penceresi */
+.rivalry-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(5, 8, 15, .82);
+  backdrop-filter: blur(6px);
+}
+.rivalry-card {
+  position: relative;
+  width: min(100%, 480px);
+  padding: 28px 24px 22px;
+  border: 1px solid #53658d;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #252f49, #171d2c);
+  box-shadow: 0 22px 70px #0009;
+  animation: resultPop .45s ease-out both;
+}
+.rivalry-card h2 { margin: 8px 38px 6px 0; overflow-wrap: anywhere; }
+.rivalry-kicker { color: #9eafff; font-size: 10px; font-weight: 900; letter-spacing: 2px; }
+.rivalry-status { min-height: 18px; color: #aab6cc; font-size: 12px; }
+.rivalry-score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 22px 0 15px; }
+.rivalry-score {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 17px 6px; border: 1px solid #ffffff18; border-radius: 13px; background: #11172588;
+}
+.rivalry-score strong { font-size: 34px; line-height: 1; }
+.rivalry-score span { color: #b7c1d5; font-size: 11px; text-align: center; overflow-wrap: anywhere; }
+.rivalry-score.win strong { color: #55d99b; }
+.rivalry-score.draw strong { color: #e8c34d; }
+.rivalry-score.lose strong { color: #ff7784; }
+.rivalry-total { color: #c5cee0; text-align: center; font-size: 13px; margin: 12px 0 17px; }
+.rivalry-total strong { color: white; }
+.rivalry-card .profile-secondary-btn { margin-top: 0; }
+.friend-card-with-rivalry { align-items: center; }
+.friend-card-with-rivalry .friend-card-actions button { white-space: nowrap; }
+@media (max-width: 600px) {
+  .rivalry-card { padding: 25px 17px 18px; }
+  .rivalry-score { padding: 14px 4px; }
+  .rivalry-score strong { font-size: 29px; }
+}
