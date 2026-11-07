@@ -606,9 +606,9 @@ function getRequestTargetId(item) {
 
 function getRequestId(item) {
   if (!item) return "";
-  return item.request_id || item.friend_request_id || item.requestId ||
-    item.friendRequestId || item.id || item.uuid ||
-    (item.request && (item.request.id || item.request.request_id)) ||
+  // Arkadaşlık satırının UUID'si requestId'dir; item.id gönderen profilin UUID'sidir.
+  return item.requestId || item.request_id || item.friendRequestId ||
+    item.friend_request_id || (item.request && (item.request.id || item.request.request_id)) ||
     (item.friend_request && (item.friend_request.id || item.friend_request.request_id)) || "";
 }
 
@@ -786,9 +786,10 @@ function renderFriendData() {
     requests.innerHTML = '<p class="friend-empty">Bekleyen arkadaşlık isteği yok.</p>';
   } else {
     friendData.incoming.forEach(item => {
+      const requestId = getRequestId(item);
       const card = createFriendCard(
         getRequestUsername(item),
-        "Sana arkadaşlık isteği gönderdi.",
+        requestId ? "Sana arkadaşlık isteği gönderdi." : "İstek bilgisi yenilenmeli.",
         null,
         null
       );
@@ -798,12 +799,12 @@ function renderFriendData() {
       const accept = document.createElement("button");
       accept.className = "friend-accept";
       accept.textContent = "Kabul Et";
-      accept.addEventListener("click", () => respondFriendRequest(getRequestId(item), true));
+      accept.disabled = !requestId;\n      accept.addEventListener("click", () => respondFriendRequest(requestId, true));
 
       const reject = document.createElement("button");
       reject.className = "friend-reject";
       reject.textContent = "Reddet";
-      reject.addEventListener("click", () => respondFriendRequest(getRequestId(item), false));
+      reject.disabled = !requestId;\n      reject.addEventListener("click", () => respondFriendRequest(requestId, false));
 
       actions.append(accept, reject);
       card.appendChild(actions);
