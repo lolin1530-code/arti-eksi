@@ -146,8 +146,40 @@
       </div>
 
       <div id="profileViewArea" class="hidden">
-        <div class="profile-heading">
-          <div class="profile-avatar"><span id="profileAvatarLetter">O</span></div>
+        <section class="avatar-editor">
+  <div class="avatar-editor-heading">
+    <div><h3>Profil Fotoğrafın</h3><p>Kendi avatarını çiz ve profilinde kullan.</p></div>
+    <button id="toggleAvatarEditorBtn" type="button" class="profile-secondary-btn">PP Çiz</button>
+  </div>
+  <div id="avatarEditorPanel" class="avatar-editor-panel hidden">
+    <canvas id="avatarCanvas" width="256" height="256" aria-label="Profil fotoğrafı çizim alanı"></canvas>
+    <div class="avatar-editor-tools">
+      <div class="avatar-color-row">
+        <button type="button" class="avatar-color active" data-avatar-color="#171923" style="--avatar-color:#171923" aria-label="Siyah"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#ffffff" style="--avatar-color:#ffffff" aria-label="Beyaz"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#ff5364" style="--avatar-color:#ff5364" aria-label="Kırmızı"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#ffbd4a" style="--avatar-color:#ffbd4a" aria-label="Sarı"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#27c982" style="--avatar-color:#27c982" aria-label="Yeşil"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#526dff" style="--avatar-color:#526dff" aria-label="Mavi"></button>
+        <button type="button" class="avatar-color" data-avatar-color="#b86cff" style="--avatar-color:#b86cff" aria-label="Mor"></button>
+        <input id="avatarCustomColor" type="color" value="#171923" aria-label="Özel renk">
+      </div>
+      <label class="avatar-size-label" for="avatarBrushSize">Kalem kalınlığı <input id="avatarBrushSize" type="range" min="2" max="28" value="8"></label>
+      <div class="avatar-action-row">
+        <button id="avatarUndoBtn" type="button">↶ Geri Al</button>
+        <button id="avatarEraserBtn" type="button">Silgi</button>
+        <button id="avatarClearBtn" type="button">Temizle</button>
+      </div>
+      <div class="avatar-action-row">
+        <button id="avatarCancelBtn" type="button" class="profile-secondary-btn">Vazgeç</button>
+        <button id="avatarSaveBtn" type="button" class="profile-primary-btn">PP'yi Kaydet</button>
+      </div>
+      <p id="avatarEditorStatus" class="profile-form-status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+<div class="profile-heading">
+          <div class="profile-avatar"><img id="profileAvatarImage" class="hidden" alt="Profil fotoğrafı"><span id="profileAvatarLetter">O</span></div>
           <div class="profile-heading-info">
             <h2 id="profileDisplayName">Oyuncu</h2>
             <p>ARTI EKSİ oyuncusu</p>
