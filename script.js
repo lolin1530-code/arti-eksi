@@ -394,19 +394,18 @@ async function copyRecoveryCode() {
 }
 
 /* Maç sonucunu sunucuya bir kez kaydeder; iki oyuncu için ayrı profil kaydı tutulur. */
-async function recordProfileResult(state, previousState) {
-  if (!playerProfile || !playerProfile.synced || !previousState) return;
-
-  if (previousState.status === "finished" || state.status !== "finished") return;
+async function recordProfileResult(state) {
+  if (!playerProfile || !playerProfile.synced || !state || state.status !== "finished") return;
 
   const history = Array.isArray(state.history) ? state.history : [];
-  const matchKey = [roomCode, state.winner, JSON.stringify(history)].join("|");
+  const matchKey = [state.room_code || roomCode, state.winner, JSON.stringify(history)].join("|");
 
   playerProfile.processedMatches = Array.isArray(playerProfile.processedMatches)
     ? playerProfile.processedMatches : [];
 
   if (playerProfile.processedMatches.includes(matchKey)) return;
 
+  // Yerel işaret, aynı maç için paralel yoklamaların çift kayıt göndermesini önler.
   playerProfile.processedMatches.push(matchKey);
   saveProfile();
 
@@ -422,11 +421,17 @@ async function recordProfileResult(state, previousState) {
     });
 
     if (result && result.success === false) {
-      playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
-      saveProfile();
       throw new Error(result.message || "Maç sonucu kaydedilemedi.");
     }
+  } catch (error) {
+    playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
+    saveProfile();
+    console.error("Profil maç sonucu kaydedilemedi:", error);
+    return;
+  }
 
+  // Sonuç kaydı başarılıysa, başarım hatası sonucu tekrar kaydettirmesin.
+  try {
     const achievementResult = await rpc("unlock_match_achievements", {
       p_player_token: playerToken,
       p_profile_id: playerProfile.id,
@@ -436,12 +441,12 @@ async function recordProfileResult(state, previousState) {
     await refreshRemoteProfile();
     await refreshAchievements(achievementResult && achievementResult.unlocked ? achievementResult.unlocked : []);
   } catch (error) {
-    console.error("Profil maç sonucu veya başarımlar kaydedilemedi:", error);
-    playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
-    saveProfile();
+    console.error("Maç başarımları kaydedilemedi:", error);
+    await refreshRemoteProfile().catch(profileError => {
+      console.error("Profil güncellenemedi:", profileError);
+    });
   }
 }
-
 
 async function refreshAchievements(newKeys = []) {
   if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
@@ -1174,6 +1179,7 @@ async function refreshState() {
     const previousState = gameState;
     await bindCurrentProfileToRoom();
     const state = await rpc("get_game_state", { p_token: playerToken });
+    roomCode = state.room_code || roomCode;
     gameState = state;
 
     if (state.player !== undefined && state.player !== null) {
@@ -1195,7 +1201,7 @@ async function refreshState() {
       }
     }
 
-    if (previousState) await recordProfileResult(state, previousState);
+    await recordProfileResult(state);
 
     const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
     const previousWasMyTurn = previousWasActive && Number(previousState.turn) === Number(playerNumber);
