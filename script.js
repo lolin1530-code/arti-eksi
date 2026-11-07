@@ -676,6 +676,13 @@ function setupAvatarCanvas() {
 }
 
 function restoreAvatarCanvas(data) {
+  if (!avatarCanvasContext) return;
+  if (!data) {
+    avatarCanvasContext.clearRect(0, 0, 256, 256);
+    avatarCanvasContext.fillStyle = "#ffffff";
+    avatarCanvasContext.fillRect(0, 0, 256, 256);
+    return;
+  }
   const image = new Image();
   image.onload = () => {
     avatarCanvasContext.clearRect(0, 0, 256, 256);
@@ -712,8 +719,7 @@ async function saveAvatarDrawing() {
     const data = $("avatarCanvas").toDataURL("image/png");
     if (data.length > 180000) throw new Error("Çizimin boyutu çok büyük. Biraz sadeleştirip tekrar dene.");
     await saveProfileAvatar(data);
-    status.textContent = "PP başarıyla kaydedildi!";
-    closeAvatarEditor();
+    status.textContent = "PP başarıyla kaydedildi! Profilinde ve maçlarda görünecek.";
   } catch (error) {
     status.textContent = "PP kaydedilemedi: " + error.message;
   } finally {
