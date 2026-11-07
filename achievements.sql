@@ -125,7 +125,6 @@ BEGIN
   IF v_wins >= 5 THEN v_keys := array_append(v_keys, 'first_blood_5'); END IF;
   IF v_wins >= 10 THEN v_keys := array_append(v_keys, 'first_blood_10'); END IF;
   IF v_wins >= 37 THEN v_keys := array_append(v_keys, 'first_blood_37'); END IF;
-  IF v_wins >= 41 THEN v_keys := array_append(v_keys, 'first_blood_41'); END IF;
   IF v_wins >= 62 THEN v_keys := array_append(v_keys, 'first_blood_62'); END IF;
   IF v_wins >= 100 THEN v_keys := array_append(v_keys, 'first_blood_100'); END IF;
 
