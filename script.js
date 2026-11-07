@@ -1496,6 +1496,16 @@ function initializeGame() {
     if (event.key === "Enter") searchPlayer();
   });
 
+  document.querySelectorAll(".achievement-category-toggle").forEach(button => {
+    button.addEventListener("click", () => {
+      const list = $(button.dataset.achievementToggle);
+      if (!list) return;
+      const willOpen = list.classList.contains("hidden");
+      list.classList.toggle("hidden", !willOpen);
+      button.setAttribute("aria-expanded", String(willOpen));
+    });
+  });
+
   $("profileModal").addEventListener("click", event => {
     if (event.target === $("profileModal")) closeProfile();
   });
