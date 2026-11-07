@@ -65,7 +65,7 @@
           <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player1ProfileStreak">0</b></div>
         </article>
         <article class="match-profile-card">
-          <div class="match-profile-name" id="player2ProfileName">Rakip Bekleniyor</div>
+          <div class="match-profile-name" id="player2ProfileName">Oyuncu 2 Bekleniyor</div>
           <div class="match-profile-stats"><span>🏆 <b id="player2ProfileWins">0</b></span><span>☠️ <b id="player2ProfileLosses">0</b></span></div>
           <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player2ProfileStreak">0</b></div>
         </article>
@@ -98,7 +98,7 @@
 
       <div class="player-columns">
         <div class="panel"><h2>Kendi Tahminlerin</h2><div id="myGuesses">Henüz tahmin yok.</div></div>
-        <div class="panel"><h2>Rakibin Tahminleri</h2>
+        <div class="panel"><h2 id="opponentGuessesHeading">Karşı Tarafın Tahminleri</h2>
           <div class="own-secret-inline hidden"><span class="own-secret-label">Gizli Sayın</span><div class="secret-display"><span id="mySecretDisplay">----</span></div></div>
           <div id="opponentGuesses">Henüz tahmin yok.</div></div>
       </div>
@@ -224,6 +224,22 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="rivalryModal" class="rivalry-modal hidden" role="dialog" aria-modal="true" aria-labelledby="rivalryTitle">
+    <section class="rivalry-card">
+      <button id="closeRivalryBtn" class="profile-close" type="button" aria-label="Kapat">×</button>
+      <div class="rivalry-kicker">BİREBİR REKABET</div>
+      <h2 id="rivalryTitle">Oyuncu vs Oyuncu</h2>
+      <p id="rivalryStatus" class="rivalry-status">İstatistikler yükleniyor...</p>
+      <div class="rivalry-score-grid">
+        <div class="rivalry-score win"><strong id="rivalryMyWins">—</strong><span id="rivalryMyLabel">Senin W</span></div>
+        <div class="rivalry-score draw"><strong id="rivalryDraws">—</strong><span>Beraberlik</span></div>
+        <div class="rivalry-score lose"><strong id="rivalryTheirWins">—</strong><span id="rivalryTheirLabel">Onun W</span></div>
+      </div>
+      <div class="rivalry-total">Toplam karşılaşma: <strong id="rivalryTotal">—</strong></div>
+      <button id="closeRivalryFooterBtn" class="profile-secondary-btn" type="button">Kapat</button>
+    </section>
   </div>
 
   <div id="easterEgg" class="easter-egg hidden" role="dialog" aria-live="polite">
