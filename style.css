@@ -491,3 +491,31 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 .match-profile-name .match-player-username{overflow-wrap:anywhere}
 .profile-equipped-title{margin:5px 0 0;color:#f2d47c;font-size:12px;font-weight:700}
 @media(max-width:600px){.achievement-toast{top:10px;right:10px;padding:12px;width:min(340px,calc(100vw - 20px))}}
+
+
+/* Profil PP çizim editörü */
+.profile-avatar { overflow: hidden; position: relative; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-editor { margin:0 0 22px;padding:15px;border:1px solid #3b455d;border-radius:14px;background:#202943; }
+.avatar-editor-heading { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.avatar-editor-heading h3 { margin:0 0 5px;font-size:15px; }
+.avatar-editor-heading p { margin:0;color:#aab6cc;font-size:12px; }
+.avatar-editor-heading .profile-secondary-btn { width:auto;min-height:38px;margin:0;padding:9px 14px; }
+.avatar-editor-panel { display:grid;grid-template-columns:minmax(0,256px) minmax(0,1fr);gap:16px;align-items:start;margin-top:16px; }
+#avatarCanvas { display:block;width:100%;max-width:256px;aspect-ratio:1;border:2px solid #53617e;border-radius:12px;background:#fff;touch-action:none;cursor:crosshair; }
+.avatar-editor-tools { min-width:0;display:flex;flex-direction:column;gap:12px; }
+.avatar-color-row { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
+.avatar-color { width:28px;height:28px;padding:0;border:2px solid #69748d;border-radius:50%;background:var(--avatar-color); }
+.avatar-color.active { outline:2px solid #fff;outline-offset:2px; }
+#avatarCustomColor { width:34px;height:32px;margin:0;padding:2px;border:0;background:transparent; }
+.avatar-size-label { display:flex;flex-direction:column;gap:5px;color:#c7d0e1;font-size:12px; }
+.avatar-size-label input { margin:0; }
+.avatar-action-row { display:flex;gap:7px; }
+.avatar-action-row button { flex:1;min-width:0;padding:10px 8px;background:#343e54;color:#fff;font-size:12px; }
+.avatar-action-row .profile-primary-btn { background:linear-gradient(135deg,#526dff,#7656db); }
+.avatar-action-row .profile-secondary-btn { background:#30394d; }
+#avatarEraserBtn.active { background:#526dff; }
+#avatarEditorStatus { margin:0; }
+.match-profile-name { display:flex;align-items:center;flex-wrap:wrap;gap:7px; }
+.match-player-avatar { width:30px;height:30px;flex:0 0 30px;object-fit:cover;border-radius:50%;border:1px solid #69748d;background:#fff; }
+@media (max-width:560px) { .avatar-editor-panel { grid-template-columns:1fr; } #avatarCanvas { margin:0 auto; } }
