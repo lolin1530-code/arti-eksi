@@ -479,6 +479,16 @@ function renderAchievements() {
 
   const wins = Number(playerProfile && playerProfile.wins) || 0;
   const streak = Number(playerProfile && playerProfile.streak) || 0;
+
+  // W başarımları profilin sunucudaki toplam galibiyet/seri bilgisiyle de
+  // doğrulanır. Böylece başarım RPC'si bir maçta başarısız olsa bile,
+  // kazanılmış İlk Kan/Bela gibi kalıcı kilometre taşları kilitli görünmez.
+  const winMilestones = achievementCatalog.filter(item =>
+    item.category === "firstblood" && wins >= item.threshold
+  );
+  winMilestones.forEach(item => playerAchievements.add(item.key));
+  if (streak >= 5) playerAchievements.add("streak_5");
+
   let unlockedTotal = 0;
 
   achievementGroups.forEach(group => {
