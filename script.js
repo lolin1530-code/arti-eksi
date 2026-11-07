@@ -18,6 +18,8 @@ let previousTurnKey = "";
 
 let playerProfile = null;
 let friendData = { friends: [], incoming: [], outgoing: [] };
+let boundProfileRoomKey = "";
+let profileBindingPromise = null;
 
 const $ = id => document.getElementById(id);
 
@@ -53,6 +55,7 @@ function isUuid(value) {
 function saveProfile() {
   localStorage.setItem("arti_profile", JSON.stringify(playerProfile));
   updateProfileEntry();
+  if (typeof renderMatchProfiles === "function") renderMatchProfiles();
 }
 
 function loadProfile() {
@@ -178,6 +181,7 @@ async function createOrUpdateProfile() {
         username,
         wins: 0,
         losses: 0,
+        streak: 0,
         createdAt: Date.now(),
         processedMatches: [],
         synced: true,
@@ -266,6 +270,7 @@ async function recoverProfile() {
       username: result.username,
       wins: Number(result.wins) || 0,
       losses: Number(result.losses) || 0,
+      streak: Number(result.streak) || 0,
       token: result.token,
       recoveryCode,
       createdAt: Date.now(),
@@ -325,7 +330,9 @@ async function refreshRemoteProfile() {
       playerProfile.username = profile.username || playerProfile.username;
       playerProfile.wins = Number(profile.wins) || 0;
       playerProfile.losses = Number(profile.losses) || 0;
+      playerProfile.streak = Number(profile.streak) || 0;
       saveProfile();
+      renderMatchProfiles();
       if (!$("profileModal").classList.contains("hidden")) renderProfile();
     }
   }
@@ -343,6 +350,7 @@ function renderProfile() {
   $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
   $("profileWins").textContent = wins;
   $("profileLosses").textContent = losses;
+  if ($("profileStreak")) $("profileStreak").textContent = Number(playerProfile.streak) || 0;
   $("profileWinRate").textContent = "%" + winRate.toFixed(1).replace(".", ",");
   $("profileWinRateBar").style.width = winRate + "%";
   $("recoveryCodeDisplay").textContent = playerProfile.recoveryCode || "Kurtarma kodu bulunamadı";
@@ -366,7 +374,6 @@ async function recordProfileResult(state, previousState) {
   if (!playerProfile || !playerProfile.synced || !previousState) return;
 
   if (previousState.status === "finished" || state.status !== "finished") return;
-  if (state.winner === null || state.winner === undefined) return;
 
   const history = Array.isArray(state.history) ? state.history : [];
   const matchKey = [roomCode, state.winner, JSON.stringify(history)].join("|");
@@ -379,7 +386,8 @@ async function recordProfileResult(state, previousState) {
   playerProfile.processedMatches.push(matchKey);
   saveProfile();
 
-  const won = Number(state.winner) === Number(playerNumber);
+  const won = state.winner === null || state.winner === undefined
+    ? null : Number(state.winner) === Number(playerNumber);
 
   try {
     const result = await rpc("record_profile_result", {
@@ -677,6 +685,56 @@ function setCoinMessage(message) {
   coin.textContent = message;
 }
 
+function renderMatchProfiles(state = gameState) {
+  const p1 = state && state.player1_profile ? state.player1_profile : null;
+  const p2 = state && state.player2_profile ? state.player2_profile : null;
+  const ownSlot = Number(playerNumber) === 1 ? 1 : 2;
+  const local = playerProfile;
+  function paint(slot, data, isOwn) {
+    data = data || (isOwn ? local : null);
+    const name = $("player" + slot + "ProfileName");
+    const wins = $("player" + slot + "ProfileWins");
+    const losses = $("player" + slot + "ProfileLosses");
+    const streak = $("player" + slot + "ProfileStreak");
+    if (!name) return;
+    if (!data) {
+      name.textContent = isOwn ? "Profil Bağlanmadı" : "Rakip Bekleniyor";
+      wins.textContent = losses.textContent = streak.textContent = "—";
+      return;
+    }
+    name.textContent = data.username || (isOwn ? "Sen" : "Rakip");
+    wins.textContent = Number(data.wins) || 0;
+    losses.textContent = Number(data.losses) || 0;
+    streak.textContent = Number(data.streak) || 0;
+  }
+  paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
+  paint(2, p2 || (ownSlot === 2 ? local : null), ownSlot === 2);
+}
+
+async function bindCurrentProfileToRoom() {
+  if (!playerToken || !playerProfile || !projectUrl || !apiKey) return;
+  if (profileBindingPromise) return profileBindingPromise;
+  const key = roomCode + ":" + playerProfile.id;
+  if (boundProfileRoomKey === key) return;
+  profileBindingPromise = (async () => {
+    try {
+      await syncProfileIfNeeded();
+      await rpc("bind_room_profile", {
+        p_player_token: playerToken,
+        p_profile_id: playerProfile.id,
+        p_profile_token: playerProfile.token
+      });
+      boundProfileRoomKey = key;
+      await refreshRemoteProfile();
+    } catch (error) {
+      console.warn("Profil odaya bağlanamadı:", error);
+    } finally {
+      profileBindingPromise = null;
+    }
+  })();
+  return profileBindingPromise;
+}
+
 function clearStartMessage() {
   if (startMessageTimer) {
     clearTimeout(startMessageTimer);
@@ -747,6 +805,9 @@ function clearRoundData() {
   setCoinMessage("");
   setTurnMessage("");
   renderOwnSecret();
+  $("secretPanel").classList.remove("hidden");
+  $("turnPanel").classList.remove("hidden");
+  renderMatchProfiles();
   renderMyGuesses();
   renderNumberBoard();
 }
@@ -821,6 +882,7 @@ async function createRoom() {
   try {
     const result = await rpc("create_room");
     playerToken = result.token || result.player_token;
+    boundProfileRoomKey = "";
     playerNumber = 1;
     roomCode = result.room_code;
     if (!playerToken || !roomCode) throw new Error("Oda bilgileri alınamadı.");
@@ -835,6 +897,8 @@ async function createRoom() {
     loadNotes();
     loadOwnSecret();
     showGameScreen();
+    renderMatchProfiles(null);
+    await bindCurrentProfileToRoom();
     startPolling();
     $("roomStatus").textContent = "Oda oluşturuldu: " + roomCode;
   } catch (error) {
@@ -848,6 +912,7 @@ async function joinRoom() {
     if (!code) throw new Error("Oda kodunu gir.");
     const result = await rpc("join_room", { p_room_code: code });
     playerToken = result.token || result.player_token;
+    boundProfileRoomKey = "";
     playerNumber = 2;
     roomCode = result.room_code || code;
     if (!playerToken) throw new Error("Oyuncu bilgisi alınamadı.");
@@ -862,6 +927,8 @@ async function joinRoom() {
     loadNotes();
     loadOwnSecret();
     showGameScreen();
+    renderMatchProfiles(null);
+    await bindCurrentProfileToRoom();
     startPolling();
     $("roomStatus").textContent = "Odaya katıldın.";
   } catch (error) {
@@ -975,8 +1042,10 @@ async function refreshState() {
   if (!playerToken) return;
   try {
     const previousState = gameState;
+    await bindCurrentProfileToRoom();
     const state = await rpc("get_game_state", { p_token: playerToken });
     gameState = state;
+    renderMatchProfiles(state);
 
     if (state.player !== undefined && state.player !== null) {
       playerNumber = Number(state.player);
@@ -1001,6 +1070,8 @@ async function refreshState() {
     const history = Array.isArray(state.history) ? state.history : [];
 
     if (state.status === "waiting") {
+      $("secretPanel").classList.remove("hidden");
+      $("turnPanel").classList.remove("hidden");
       resetStartMessage();
       $("guessBtn").disabled = true;
       hideGameResult();
@@ -1017,6 +1088,8 @@ async function refreshState() {
         $("lockBtn").disabled = false;
       }
     } else if (state.status === "playing") {
+      $("secretPanel").classList.add("hidden");
+      $("turnPanel").classList.add("hidden");
       const myTurn = Number(state.turn) === playerNumber;
       $("guessBtn").disabled = !myTurn || !ownSecret;
       hideGameResult();
@@ -1035,6 +1108,8 @@ async function refreshState() {
         } else if (startMessageShown) showStartingPlayerMessage();
       }
     } else if (state.status === "last_chance") {
+      $("secretPanel").classList.add("hidden");
+      $("turnPanel").classList.add("hidden");
       clearStartMessage();
       const myTurn = Number(state.turn) === playerNumber;
       $("guessBtn").disabled = !myTurn || !ownSecret;
@@ -1050,6 +1125,8 @@ async function refreshState() {
         $("gameResultText").style.color = "#e8c34d";
       }
     } else if (state.status === "finished") {
+      $("secretPanel").classList.add("hidden");
+      $("turnPanel").classList.add("hidden");
       clearStartMessage();
       $("guessBtn").disabled = true;
       $("gameResultBar").classList.remove("hidden");
@@ -1082,7 +1159,13 @@ async function refreshState() {
   }
 }
 
-function renderOwnSecret() { $("mySecretDisplay").textContent = ownSecret || "----"; }
+function renderOwnSecret() {
+  const display = $("mySecretDisplay");
+  if (!display) return;
+  display.textContent = ownSecret || "----";
+  const wrapper = display.closest(".own-secret-inline");
+  if (wrapper) wrapper.classList.toggle("hidden", !ownSecret);
+}
 
 function renderOpponentGuesses(history) {
   const list = $("opponentGuesses");
