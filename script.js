@@ -35,7 +35,7 @@ const achievementCatalog = [
 ];
 
 const achievementGroups = [
-  { key: "w", categories: ["firstblood", "streak"], listId: "wAchievements", countId: "wAchievementCount", total: 8 },
+  { key: "w", categories: ["firstblood", "streak"], listId: "wAchievements", countId: "wAchievementCount", total: 7 },
   { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 }
 ];
 
@@ -494,7 +494,7 @@ function renderAchievements() {
 
       const icon = document.createElement("div");
       icon.className = "achievement-icon";
-      icon.textContent = unlocked ? "🏆" : (hiddenLocked ? "❔" : "🔒");
+      icon.textContent = unlocked ? "🔓" : "🔒";
 
       const body = document.createElement("div");
       body.className = "achievement-item-body";
