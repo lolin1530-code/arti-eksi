@@ -846,11 +846,14 @@ async function bindCurrentProfileToRoom() {
   profileBindingPromise = (async () => {
     try {
       await syncProfileIfNeeded();
-      await rpc("bind_room_profile", {
+      const bindingResult = await rpc("bind_room_profile", {
         p_player_token: playerToken,
         p_profile_id: playerProfile.id,
         p_profile_token: playerProfile.token
       });
+      if (bindingResult && bindingResult.success === false) {
+        throw new Error(bindingResult.message || "Profil odaya bağlanamadı.");
+      }
       boundProfileRoomKey = key;
       await refreshRemoteProfile();
     } catch (error) {
@@ -1181,6 +1184,17 @@ async function refreshState() {
     // Oyuncu numarası kesinleştikten sonra profilleri doğru taraflara yerleştir.
     renderMatchProfiles(state);
 
+    // Kendi profilimiz sunucu durumunda görünmüyorsa bağlamayı tekrar dene.
+    // Böylece oda kurucusunun profili karşı oyuncuya da ulaşır.
+    if (playerProfile && playerProfile.synced) {
+      const ownRemoteProfile = Number(playerNumber) === 1
+        ? state.player1_profile
+        : state.player2_profile;
+      if (!ownRemoteProfile || ownRemoteProfile.id !== playerProfile.id) {
+        boundProfileRoomKey = "";
+      }
+    }
+
     if (previousState) await recordProfileResult(state, previousState);
 
     const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
@@ -1215,11 +1229,12 @@ async function refreshState() {
         : (state.opponent_username || state.opponent_name ||
           (Number(playerNumber) === 1 ? state.player2_username : state.player1_username));
 
-      if (!opponentJoined) setTurnMessage((opponentName || "Rakip") + " Bekleniyor", "#ff5364");
-      else if (!ownSecret && !state.opponent_locked) setTurnMessage("İki Oyuncunun da Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
-      else if (ownSecret && !state.opponent_locked) setTurnMessage("Rakibin Gizli Sayısını Kilitlemesi Bekleniyor", "#e8c34d");
-      else if (!ownSecret && state.opponent_locked) setTurnMessage("Gizli Sayını Kilitlemen Bekleniyor", "#e8c34d");
-      else setTurnMessage("İki Oyuncu da Sayısını Kilitledi, Oyun Başlamak Üzere", "#27c982");
+      const namedOpponent = opponentName || "Rakip";
+      if (!opponentJoined) setTurnMessage(namedOpponent + " Bekleniyor", "#ff5364");
+      else if (!ownSecret && !state.opponent_locked) setTurnMessage("Senin ve " + namedOpponent + " adlı oyuncunun sayısını kilitlemesi bekleniyor", "#e8c34d");
+      else if (ownSecret && !state.opponent_locked) setTurnMessage(namedOpponent + " adlı oyuncunun gizli sayısını kilitlemesi bekleniyor", "#e8c34d");
+      else if (!ownSecret && state.opponent_locked) setTurnMessage("Gizli sayını kilitlemen bekleniyor", "#e8c34d");
+      else setTurnMessage("İki oyuncu da sayısını kilitledi, oyun başlamak üzere", "#27c982");
 
       if (!ownSecret) {
         $("secret").disabled = false;
