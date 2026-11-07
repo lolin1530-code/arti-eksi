@@ -1395,7 +1395,11 @@ async function refreshState() {
     roomCode = state.room_code || roomCode;
     $("gameRoomInfo").textContent = "Oda kodu: " + roomCode;
 
-    if (lastStatus === "finished" && state.status === "waiting") clearRoundData();
+    if (lastStatus === "finished" && state.status === "waiting") {
+      clearRoundData();
+      lastFeedbackStatus = "";
+      $("gameResultBar").classList.remove("result-last-chance", "result-win", "result-lose", "result-draw", "result-enter");
+    }
 
     const history = Array.isArray(state.history) ? state.history : [];
 
