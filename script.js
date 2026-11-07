@@ -167,6 +167,7 @@ function showProfileView() {
   $("profileViewArea").classList.remove("hidden");
   renderProfile();
   refreshAchievements();
+  loadEquippedProfileTitle();
 }
 
 async function createOrUpdateProfile() {
@@ -380,10 +381,10 @@ function renderProfile() {
   const total = wins + losses;
   const winRate = total > 0 ? (wins / total) * 100 : 0;
 
-  $("profileDisplayName").textContent = playerProfile.username;
   const equippedTitle = achievementCatalog.find(item => item.key === playerProfile.equippedTitleKey);
+  paintProfileName($("profileDisplayName"), playerProfile.username, equippedTitle ? equippedTitle.key : "");
   const titleLine = $("profileEquippedTitle");
-  if (titleLine) titleLine.textContent = equippedTitle ? ((equippedTitle.icon || "✦") + " " + equippedTitle.title) : "";
+  if (titleLine) titleLine.textContent = "";
   $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
   $("profileWins").textContent = wins;
   $("profileLosses").textContent = losses;
@@ -499,26 +500,47 @@ function queueAchievementToasts(keys) {
   showNextAchievementToast();
 }
 async function equipAchievementTitle(key) {
+  const status = $("achievementStatus");
   if (!playerProfile || !playerProfile.synced) {
-    $("achievementStatus").textContent = "Unvan seçmek için profilinin sunucuya eşitlenmiş olması gerekiyor.";
+    status.textContent = "Unvan seçmek için önce profilini sunucuya eşitle.";
     return;
   }
-  if (key && !playerAchievements.has(key)) return;
+  if (key && !playerAchievements.has(key)) {
+    status.textContent = "Bu başarım hesabında kazanılmış görünmüyor. Başarımları yenile.";
+    return;
+  }
+  status.textContent = "Unvan kaydediliyor...";
   try {
     const result = await rpc("set_profile_title", {
       p_profile_id: playerProfile.id,
       p_profile_token: playerProfile.token,
       p_achievement_key: key || null
     });
+    const row = Array.isArray(result) ? result[0] : result;
     if (result && result.success === false) throw new Error(result.message || "Unvan kaydedilemedi.");
+    if (row && row.success === false) throw new Error(row.message || "Unvan kaydedilemedi.");
     playerProfile.equippedTitleKey = key || "";
     roomProfileTitles[playerProfile.id] = key || "";
     saveProfile();
     renderProfile();
     renderMatchProfiles();
-    $("achievementStatus").textContent = key ? "Unvanın kullanıcı adına eklendi." : "Unvanın kaldırıldı.";
+    status.textContent = key ? "Unvanın kullanıcı adının yanına eklendi." : "Unvanın kaldırıldı.";
   } catch (error) {
-    $("achievementStatus").textContent = "Unvan kaydedilemedi: " + error.message;
+    status.textContent = "Unvan kaydedilemedi: " + error.message;
+  }
+}
+async function loadEquippedProfileTitle() {
+  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
+  try {
+    const result = await rpc("get_profile_title", { p_profile_id: playerProfile.id });
+    const row = Array.isArray(result) ? result[0] : result;
+    playerProfile.equippedTitleKey = row && row.equipped_title_key ? row.equipped_title_key : "";
+    roomProfileTitles[playerProfile.id] = playerProfile.equippedTitleKey;
+    saveProfile();
+    renderProfile();
+    renderMatchProfiles();
+  } catch (error) {
+    $("achievementStatus").textContent = "Takılı unvan yüklenemedi: " + error.message;
   }
 }
 async function fetchRoomProfileTitle(profileId) {
@@ -647,7 +669,11 @@ function renderAchievements() {
         equipButton.type = "button";
         equipButton.className = "achievement-equip-btn" + (equipped ? " equipped" : "");
         equipButton.textContent = equipped ? "Takılı ✓" : "Unvan Yap";
-        equipButton.addEventListener("click", () => equipAchievementTitle(equipped ? "" : item.key));
+        equipButton.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          equipAchievementTitle(equipped ? "" : item.key);
+        });
         card.appendChild(equipButton);
       }
       container.appendChild(card);
