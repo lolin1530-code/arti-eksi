@@ -18,20 +18,24 @@ let previousTurnKey = "";
 
 let playerProfile = null;
 let playerAchievements = new Set();
+let achievementToastQueue = [];
+let achievementToastActive = false;
+let roomProfileTitles = {};
+let roomProfileTitleFetches = new Set();
 
 const achievementCatalog = [
-  { key: "first_blood_1", category: "firstblood", title: "İlk Kan", description: "1 galibiyete ulaş.", threshold: 1 },
-  { key: "first_blood_5", category: "firstblood", title: "Bela", description: "5 galibiyete ulaş.", threshold: 5 },
-  { key: "first_blood_10", category: "firstblood", title: "BEN10", description: "10 galibiyete ulaş.", threshold: 10 },
-  { key: "first_blood_37", category: "firstblood", title: "Yuh Ayı!", description: "37 galibiyete ulaş.", threshold: 37 },
-  { key: "first_blood_62", category: "firstblood", title: "Dersim", description: "62 galibiyete ulaş.", threshold: 62 },
-  { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100 },
-  { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan." },
-  { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet." },
-  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan." },
-  { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true },
-  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true },
-  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "5 galibiyetlik yenilmezlik serisine ulaş.", threshold: 5 }
+  { key: "first_blood_1", category: "firstblood", title: "İlk Kan", description: "1 galibiyete ulaş.", threshold: 1, icon: "🩸" },
+  { key: "first_blood_5", category: "firstblood", title: "Bela", description: "5 galibiyete ulaş.", threshold: 5, icon: "😈" },
+  { key: "first_blood_10", category: "firstblood", title: "BEN10", description: "10 galibiyete ulaş.", threshold: 10, icon: "👽" },
+  { key: "first_blood_37", category: "firstblood", title: "Yuh Ayı!", description: "37 galibiyete ulaş.", threshold: 37, icon: "🐻" },
+  { key: "first_blood_62", category: "firstblood", title: "Dersim", description: "62 galibiyete ulaş.", threshold: 62, icon: "⚡" },
+  { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100, icon: "👑" },
+  { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan.", icon: "💅" },
+  { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet.", icon: "🐎" },
+  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan.", icon: "🔥" },
+  { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true, icon: "🕯️" },
+  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" },
+  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "5 galibiyetlik yenilmezlik serisine ulaş.", threshold: 5, icon: "🔥" }
 ];
 
 const achievementGroups = [
@@ -377,6 +381,9 @@ function renderProfile() {
   const winRate = total > 0 ? (wins / total) * 100 : 0;
 
   $("profileDisplayName").textContent = playerProfile.username;
+  const equippedTitle = achievementCatalog.find(item => item.key === playerProfile.equippedTitleKey);
+  const titleLine = $("profileEquippedTitle");
+  if (titleLine) titleLine.textContent = equippedTitle ? ((equippedTitle.icon || "✦") + " " + equippedTitle.title) : "";
   $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
   $("profileWins").textContent = wins;
   $("profileLosses").textContent = losses;
@@ -463,6 +470,88 @@ async function recordProfileResult(state) {
     });
   }
 }
+
+function showAchievementToast(item) {
+  const toast = $("achievementToast");
+  if (!toast || !item) return;
+  $("achievementToastIcon").textContent = item.icon || "🏆";
+  $("achievementToastTitle").textContent = item.title;
+  $("achievementToastDescription").textContent = item.description || "Yeni bir başarım açtın.";
+  toast.classList.remove("hidden", "toast-out");
+  void toast.offsetWidth;
+  setTimeout(() => {
+    toast.classList.add("toast-out");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+      toast.classList.remove("toast-out");
+      achievementToastActive = false;
+      showNextAchievementToast();
+    }, 320);
+  }, 3600);
+}
+function showNextAchievementToast() {
+  if (achievementToastActive || !achievementToastQueue.length) return;
+  achievementToastActive = true;
+  showAchievementToast(achievementToastQueue.shift());
+}
+function queueAchievementToasts(keys) {
+  achievementCatalog.filter(item => keys.includes(item.key)).forEach(item => achievementToastQueue.push(item));
+  showNextAchievementToast();
+}
+async function equipAchievementTitle(key) {
+  if (!playerProfile || !playerProfile.synced) {
+    $("achievementStatus").textContent = "Unvan seçmek için profilinin sunucuya eşitlenmiş olması gerekiyor.";
+    return;
+  }
+  if (key && !playerAchievements.has(key)) return;
+  try {
+    const result = await rpc("set_profile_title", {
+      p_profile_id: playerProfile.id,
+      p_profile_token: playerProfile.token,
+      p_achievement_key: key || null
+    });
+    if (result && result.success === false) throw new Error(result.message || "Unvan kaydedilemedi.");
+    playerProfile.equippedTitleKey = key || "";
+    roomProfileTitles[playerProfile.id] = key || "";
+    saveProfile();
+    renderProfile();
+    renderMatchProfiles();
+    $("achievementStatus").textContent = key ? "Unvanın kullanıcı adına eklendi." : "Unvanın kaldırıldı.";
+  } catch (error) {
+    $("achievementStatus").textContent = "Unvan kaydedilemedi: " + error.message;
+  }
+}
+async function fetchRoomProfileTitle(profileId) {
+  if (!profileId || roomProfileTitles[profileId] !== undefined || roomProfileTitleFetches.has(profileId)) return;
+  roomProfileTitleFetches.add(profileId);
+  try {
+    const result = await rpc("get_profile_title", { p_profile_id: profileId });
+    const row = Array.isArray(result) ? result[0] : result;
+    roomProfileTitles[profileId] = row && row.equipped_title_key ? row.equipped_title_key : "";
+  } catch (error) {
+    roomProfileTitles[profileId] = "";
+    console.warn("Oyuncu unvanı alınamadı:", error);
+  } finally {
+    roomProfileTitleFetches.delete(profileId);
+    if (gameState) renderMatchProfiles();
+  }
+}
+function paintProfileName(element, username, titleKey) {
+  if (!element) return;
+  element.innerHTML = "";
+  const name = document.createElement("span");
+  name.className = "match-player-username";
+  name.textContent = username || "Oyuncu";
+  element.appendChild(name);
+  const title = achievementCatalog.find(item => item.key === titleKey);
+  if (title) {
+    const badge = document.createElement("span");
+    badge.className = "achievement-title-badge";
+    badge.textContent = (title.icon || "✦") + " " + title.title;
+    element.appendChild(badge);
+  }
+}
+
 async function refreshAchievements(newKeys = []) {
   if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
   try {
@@ -473,6 +562,7 @@ async function refreshAchievements(newKeys = []) {
 
     const newlyUnlocked = Array.isArray(newKeys) ? newKeys : [];
     if (newlyUnlocked.length) {
+      queueAchievementToasts(newlyUnlocked);
       const names = achievementCatalog
         .filter(item => newlyUnlocked.includes(item.key))
         .map(item => item.title);
@@ -524,7 +614,7 @@ function renderAchievements() {
 
       const icon = document.createElement("div");
       icon.className = "achievement-icon";
-      icon.textContent = unlocked ? "🔓" : "🔒";
+      icon.textContent = unlocked ? (item.icon || "🔓") : "🔒";
 
       const body = document.createElement("div");
       body.className = "achievement-item-body";
@@ -550,6 +640,16 @@ function renderAchievements() {
 
       body.append(title, description, progress);
       card.append(icon, body);
+
+      if (unlocked && !hiddenLocked) {
+        const equipButton = document.createElement("button");
+        const equipped = playerProfile && playerProfile.equippedTitleKey === item.key;
+        equipButton.type = "button";
+        equipButton.className = "achievement-equip-btn" + (equipped ? " equipped" : "");
+        equipButton.textContent = equipped ? "Takılı ✓" : "Unvan Yap";
+        equipButton.addEventListener("click", () => equipAchievementTitle(equipped ? "" : item.key));
+        card.appendChild(equipButton);
+      }
       container.appendChild(card);
     });
   });
@@ -1008,6 +1108,9 @@ function renderMatchProfiles(state = gameState) {
     (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
   );
   const local = playerProfile;
+  if (p1 && p1.id) fetchRoomProfileTitle(p1.id);
+  if (p2 && p2.id) fetchRoomProfileTitle(p2.id);
+  if (local && local.id && local.equippedTitleKey) roomProfileTitles[local.id] = local.equippedTitleKey;
   currentOpponentName = (Number(playerNumber) === 1 ? p2 : p1)?.username ||
     opponentName ||
     (Number(playerNumber) === 1 ? "Oyuncu 2" : "Oyuncu 1");
@@ -1033,7 +1136,10 @@ function renderMatchProfiles(state = gameState) {
       return;
     }
 
-    name.textContent = data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot));
+    const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
+      ? roomProfileTitles[data.id]
+      : (isOwn && local ? local.equippedTitleKey : data.equipped_title_key);
+    paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), titleKey);
     if (wins) wins.textContent = Number(data.wins) || 0;
     if (losses) losses.textContent = Number(data.losses) || 0;
     if (streak) streak.textContent = Number(data.streak) || 0;
