@@ -17,6 +17,30 @@ let turnAudioContext = null;
 let previousTurnKey = "";
 
 let playerProfile = null;
+let playerAchievements = new Set();
+
+const achievementCatalog = [
+  { key: "first_blood_1", category: "firstblood", title: "İlk Kan", description: "1 galibiyete ulaş.", threshold: 1 },
+  { key: "first_blood_5", category: "firstblood", title: "Bela", description: "5 galibiyete ulaş.", threshold: 5 },
+  { key: "first_blood_10", category: "firstblood", title: "BEN10", description: "10 galibiyete ulaş.", threshold: 10 },
+  { key: "first_blood_37", category: "firstblood", title: "Yuh Ayı!", description: "37 galibiyete ulaş.", threshold: 37 },
+  { key: "first_blood_41", category: "firstblood", title: "Kere Maşallah", description: "41 galibiyete ulaş.", threshold: 41 },
+  { key: "first_blood_62", category: "firstblood", title: "Dersim", description: "62 galibiyete ulaş.", threshold: 62 },
+  { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100 },
+  { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan." },
+  { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet." },
+  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Rakip -4 almışken maçı kazan." },
+  { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true },
+  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true },
+  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "5 galibiyetlik yenilmezlik serisine ulaş.", threshold: 5 }
+];
+
+const achievementGroups = [
+  { key: "firstblood", title: "İlk Kan", listId: "firstBloodAchievements", countId: "firstBloodCount", total: 7 },
+  { key: "brat", title: "BRAT", listId: "bratAchievements", countId: "bratCount", total: 5 },
+  { key: "streak", title: "Seri", listId: "streakAchievements", countId: "streakCount", total: 1 }
+];
+
 let friendData = { friends: [], incoming: [], outgoing: [] };
 let boundProfileRoomKey = "";
 let profileBindingPromise = null;
@@ -135,6 +159,7 @@ function showProfileView() {
   $("profileRecoveryArea").classList.add("hidden");
   $("profileViewArea").classList.remove("hidden");
   renderProfile();
+  refreshAchievements();
 }
 
 async function createOrUpdateProfile() {
@@ -357,6 +382,7 @@ function renderProfile() {
   $("recoveryCodeStatus").textContent = playerProfile.recoverySaved
     ? "Kurtarma kodun sunucuya kaydedildi. Güvenli bir yere kopyala."
     : "Kurtarma kodunun sunucuya kaydedilmesi bekleniyor.";
+  renderAchievements();
 }
 
 async function copyRecoveryCode() {
@@ -403,12 +429,110 @@ async function recordProfileResult(state, previousState) {
       throw new Error(result.message || "Maç sonucu kaydedilemedi.");
     }
 
+    const achievementResult = await rpc("unlock_match_achievements", {
+      p_player_token: playerToken,
+      p_profile_id: playerProfile.id,
+      p_profile_token: playerProfile.token,
+      p_match_key: matchKey
+    });
     await refreshRemoteProfile();
+    await refreshAchievements(achievementResult && achievementResult.unlocked ? achievementResult.unlocked : []);
   } catch (error) {
-    console.error("Profil maç sonucu kaydedilemedi:", error);
+    console.error("Profil maç sonucu veya başarımlar kaydedilemedi:", error);
     playerProfile.processedMatches = playerProfile.processedMatches.filter(key => key !== matchKey);
     saveProfile();
   }
+}
+
+
+async function refreshAchievements(newKeys = []) {
+  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
+  try {
+    const result = await rpc("get_player_achievements", { p_id: playerProfile.id });
+    const rows = Array.isArray(result) ? result : (result ? [result] : []);
+    playerAchievements = new Set(rows.map(item => item.achievement_key).filter(Boolean));
+    renderAchievements();
+
+    const newlyUnlocked = Array.isArray(newKeys) ? newKeys : [];
+    if (newlyUnlocked.length) {
+      const names = achievementCatalog
+        .filter(item => newlyUnlocked.includes(item.key))
+        .map(item => item.title);
+      if (names.length) {
+        $("achievementStatus").textContent = "Yeni başarım" + (names.length > 1 ? "lar" : "") + " açıldı: " + names.join(", ");
+        $("achievementStatus").classList.add("achievement-unlock-message");
+      }
+    }
+  } catch (error) {
+    const status = $("achievementStatus");
+    if (status) status.textContent = "Başarımlar yüklenemedi: " + error.message;
+  }
+}
+
+function renderAchievements() {
+  if (!$("firstBloodAchievements")) return;
+
+  const wins = Number(playerProfile && playerProfile.wins) || 0;
+  const streak = Number(playerProfile && playerProfile.streak) || 0;
+  let unlockedTotal = 0;
+
+  achievementGroups.forEach(group => {
+    const container = $(group.listId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    const items = achievementCatalog.filter(item => item.category === group.key);
+    const unlockedCount = items.filter(item => playerAchievements.has(item.key)).length;
+    unlockedTotal += unlockedCount;
+
+    const count = $(group.countId);
+    if (count) {
+      if (group.key === "brat") {
+        const hiddenRemaining = items.filter(item => item.hidden && !playerAchievements.has(item.key)).length;
+        count.textContent = hiddenRemaining ? unlockedCount + "/" + group.total + " · " + hiddenRemaining + " gizli başarım" : unlockedCount + "/" + group.total;
+      } else {
+        count.textContent = unlockedCount + "/" + group.total;
+      }
+    }
+
+    items.forEach(item => {
+      const unlocked = playerAchievements.has(item.key);
+      const hiddenLocked = item.hidden && !unlocked;
+      const card = document.createElement("div");
+      card.className = "achievement-item " + (unlocked ? "unlocked" : "locked");
+
+      const icon = document.createElement("div");
+      icon.className = "achievement-icon";
+      icon.textContent = unlocked ? "🏆" : (hiddenLocked ? "❔" : "🔒");
+
+      const body = document.createElement("div");
+      body.className = "achievement-item-body";
+
+      const title = document.createElement("strong");
+      title.textContent = hiddenLocked ? "Gizli Başarım" : item.title;
+
+      const description = document.createElement("span");
+      description.textContent = hiddenLocked ? "Henüz keşfedilmedi." : item.description;
+
+      const progress = document.createElement("small");
+      if (unlocked) {
+        progress.textContent = "AÇILDI";
+      } else if (item.category === "firstblood") {
+        progress.textContent = "Galibiyet: " + Math.min(wins, item.threshold) + "/" + item.threshold;
+      } else if (item.key === "streak_5") {
+        progress.textContent = "Seri: " + Math.min(streak, 5) + "/5";
+      } else {
+        progress.textContent = hiddenLocked ? "???" : "Kilitli";
+      }
+
+      body.append(title, description, progress);
+      card.append(icon, body);
+      container.appendChild(card);
+    });
+  });
+
+  const summary = $("achievementSummary");
+  if (summary) summary.textContent = unlockedTotal + "/" + achievementCatalog.length + " açık";
 }
 
 /* Arkadaş arama ve istekler */
