@@ -36,9 +36,8 @@ const achievementCatalog = [
 ];
 
 const achievementGroups = [
-  { key: "firstblood", title: "İlk Kan", listId: "firstBloodAchievements", countId: "firstBloodCount", total: 7 },
-  { key: "brat", title: "BRAT", listId: "bratAchievements", countId: "bratCount", total: 5 },
-  { key: "streak", title: "Seri", listId: "streakAchievements", countId: "streakCount", total: 1 }
+  { key: "w", categories: ["firstblood", "streak"], listId: "wAchievements", countId: "wAchievementCount", total: 8 },
+  { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 }
 ];
 
 let friendData = { friends: [], incoming: [], outgoing: [] };
@@ -470,7 +469,7 @@ async function refreshAchievements(newKeys = []) {
 }
 
 function renderAchievements() {
-  if (!$("firstBloodAchievements")) return;
+  if (!$("wAchievements")) return;
 
   const wins = Number(playerProfile && playerProfile.wins) || 0;
   const streak = Number(playerProfile && playerProfile.streak) || 0;
@@ -481,25 +480,18 @@ function renderAchievements() {
     if (!container) return;
     container.innerHTML = "";
 
-    const items = achievementCatalog.filter(item => item.category === group.key);
+    const items = achievementCatalog.filter(item => group.categories.includes(item.category));
     const unlockedCount = items.filter(item => playerAchievements.has(item.key)).length;
     unlockedTotal += unlockedCount;
 
     const count = $(group.countId);
-    if (count) {
-      if (group.key === "brat") {
-        const hiddenRemaining = items.filter(item => item.hidden && !playerAchievements.has(item.key)).length;
-        count.textContent = hiddenRemaining ? unlockedCount + "/" + group.total + " · " + hiddenRemaining + " gizli başarım" : unlockedCount + "/" + group.total;
-      } else {
-        count.textContent = unlockedCount + "/" + group.total;
-      }
-    }
+    if (count) count.textContent = unlockedCount + "/" + group.total;
 
     items.forEach(item => {
       const unlocked = playerAchievements.has(item.key);
       const hiddenLocked = item.hidden && !unlocked;
       const card = document.createElement("div");
-      card.className = "achievement-item " + (unlocked ? "unlocked" : "locked");
+      card.className = "achievement-item " + (unlocked ? "unlocked" : "locked") + (hiddenLocked ? " hidden-achievement" : "");
 
       const icon = document.createElement("div");
       icon.className = "achievement-icon";
@@ -509,20 +501,22 @@ function renderAchievements() {
       body.className = "achievement-item-body";
 
       const title = document.createElement("strong");
-      title.textContent = hiddenLocked ? "Gizli Başarım" : item.title;
+      title.textContent = hiddenLocked ? "???" : item.title;
 
       const description = document.createElement("span");
-      description.textContent = hiddenLocked ? "Henüz keşfedilmedi." : item.description;
+      description.textContent = hiddenLocked ? "???" : item.description;
 
       const progress = document.createElement("small");
-      if (unlocked) {
+      if (hiddenLocked) {
+        progress.textContent = "Gizli Başarım";
+      } else if (unlocked) {
         progress.textContent = "AÇILDI";
       } else if (item.category === "firstblood") {
         progress.textContent = "Galibiyet: " + Math.min(wins, item.threshold) + "/" + item.threshold;
       } else if (item.key === "streak_5") {
         progress.textContent = "Seri: " + Math.min(streak, 5) + "/5";
       } else {
-        progress.textContent = hiddenLocked ? "???" : "Kilitli";
+        progress.textContent = "Kilitli";
       }
 
       body.append(title, description, progress);
