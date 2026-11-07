@@ -160,6 +160,35 @@
 
         <p class="profile-note">İstatistikler profil oluşturulduktan sonra oynanan tamamlanmış maçlardan hesaplanır.</p>
 
+        <section class="achievements-section">
+          <div class="achievements-heading">
+            <h3>Başarımlar</h3>
+            <span id="achievementSummary">0/13 açık</span>
+          </div>
+          <div class="achievement-categories">
+            <section class="achievement-category">
+              <button type="button" class="achievement-category-toggle" data-achievement-toggle="firstBloodAchievements" aria-expanded="false">
+                <strong>İlk Kan</strong><span id="firstBloodCount">0/7</span>
+              </button>
+              <div id="firstBloodAchievements" class="achievement-list hidden"></div>
+            </section>
+            <section class="achievement-category">
+              <button type="button" class="achievement-category-toggle" data-achievement-toggle="bratAchievements" aria-expanded="false">
+                <strong>BRAT</strong><span id="bratCount">0/5</span>
+              </button>
+              <div id="bratAchievements" class="achievement-list hidden"></div>
+            </section>
+            <section class="achievement-category">
+              <button type="button" class="achievement-category-toggle" data-achievement-toggle="streakAchievements" aria-expanded="false">
+                <strong>Seri</strong><span id="streakCount">0/1</span>
+              </button>
+              <div id="streakAchievements" class="achievement-list hidden"></div>
+            </section>
+          </div>
+          <p id="achievementStatus" class="achievement-status"></p>
+        </section>
+
+
         <div class="recovery-box">
           <h3>Profil Kurtarma Kodun</h3>
           <p>Bu kodu güvenli bir yere kaydet. Tarayıcı verilerin silinirse profilini bu kodla geri yükleyebilirsin.</p>
