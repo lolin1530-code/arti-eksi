@@ -44,9 +44,19 @@
         <button id="backBtn" type="button">Bağlantı ekranına dön</button>
       </div>
 
-      <div class="panel turn-status-panel hidden" id="turnPanel">
-        <p id="turn"></p>
+      <div class="match-profiles" id="matchProfiles">
+        <article class="match-profile-card">
+          <div class="match-profile-name" id="player1ProfileName">Oyuncu 1</div>
+          <div class="match-profile-stats"><span>🏆 <b id="player1ProfileWins">0</b></span><span>☠️ <b id="player1ProfileLosses">0</b></span></div>
+          <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player1ProfileStreak">0</b></div>
+        </article>
+        <article class="match-profile-card">
+          <div class="match-profile-name" id="player2ProfileName">Rakip Bekleniyor</div>
+          <div class="match-profile-stats"><span>🏆 <b id="player2ProfileWins">0</b></span><span>☠️ <b id="player2ProfileLosses">0</b></span></div>
+          <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player2ProfileStreak">0</b></div>
+        </article>
       </div>
+      <div class="panel turn-status-panel hidden" id="turnPanel"><p id="turn"></p></div>
 
       <div class="panel" id="secretPanel">
         <h2>Gizli Sayın</h2>
@@ -54,7 +64,6 @@
         <input id="secret" type="password" inputmode="numeric" maxlength="4" placeholder="Örn. 5831">
         <button id="lockBtn" type="button">Sayımı Kilitle</button>
         <p id="secretStatus">Sayını henüz kilitlemedin.</p>
-        <div class="secret-display"><span id="mySecretDisplay">----</span></div>
       </div>
 
       <div class="panel color-picker-panel">
@@ -75,7 +84,9 @@
 
       <div class="player-columns">
         <div class="panel"><h2>Kendi Tahminlerin</h2><div id="myGuesses">Henüz tahmin yok.</div></div>
-        <div class="panel"><h2>Rakibin Tahminleri</h2><div id="opponentGuesses">Henüz tahmin yok.</div></div>
+        <div class="panel"><h2>Rakibin Tahminleri</h2>
+          <div class="own-secret-inline hidden"><span class="own-secret-label">Gizli Sayın</span><div class="secret-display"><span id="mySecretDisplay">----</span></div></div>
+          <div id="opponentGuesses">Henüz tahmin yok.</div></div>
       </div>
 
       <div class="panel">
