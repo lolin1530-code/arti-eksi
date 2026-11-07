@@ -266,3 +266,17 @@ button:active { transform: scale(.98); }
   .recovery-code-row { align-items: stretch; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { .guess-turn-message span { animation: none; } }
+
+
+/* Maç profilleri ve gizli sayı alanı */
+.match-profiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.match-profile-card{min-width:0;padding:15px;border:1px solid #465575;border-radius:13px;background:linear-gradient(145deg,#252f49,#1b2030)}
+.match-profile-name{min-height:24px;margin-bottom:11px;color:#fff;font-size:16px;font-weight:900;overflow-wrap:anywhere}
+.match-profile-stats{display:flex;flex-wrap:wrap;gap:13px;color:#c5cee0;font-size:13px}
+.match-profile-stats b{color:#fff}
+.match-profile-streak{margin-top:11px;color:#f0bd55;font-size:12px;overflow-wrap:anywhere}
+.own-secret-inline{margin:-4px 0 13px;padding:10px;border:1px solid #526dff55;border-radius:10px;background:#202943}
+.own-secret-label{color:#aebcff;font-size:12px;font-weight:bold}
+.own-secret-inline .secret-display{margin:7px 0 0}
+.own-secret-inline .secret-display span{padding:8px 4px}
+@media(max-width:520px){.match-profiles{gap:8px}.match-profile-card{padding:11px 9px}.match-profile-name{font-size:14px}.match-profile-stats{gap:8px;font-size:11px}.match-profile-streak{font-size:10px}.player-columns{grid-template-columns:1fr 1fr;gap:8px}.player-columns .panel{padding:11px 8px}.player-columns h2{font-size:14px}}
