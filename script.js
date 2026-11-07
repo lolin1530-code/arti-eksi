@@ -1420,7 +1420,7 @@ async function refreshState() {
         : (state.opponent_username || state.opponent_name ||
           (Number(playerNumber) === 1 ? state.player2_username : state.player1_username));
 
-      const namedOpponent = opponentName || "Rakip";
+      const namedOpponent = opponentName || "Karşı taraf";
       if (!opponentJoined) setTurnMessage(namedOpponent + " Bekleniyor", "#ff5364");
       else if (!ownSecret && !state.opponent_locked) setTurnMessage("Senin ve " + namedOpponent + " adlı oyuncunun sayısını kilitlemesi bekleniyor", "#e8c34d");
       else if (ownSecret && !state.opponent_locked) setTurnMessage(namedOpponent + " adlı oyuncunun gizli sayısını kilitlemesi bekleniyor", "#e8c34d");
