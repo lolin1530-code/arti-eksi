@@ -82,6 +82,14 @@ BEGIN
     RAISE EXCEPTION 'Profil bu oyuncu oturumuna bağlı değil.';
   END IF;
 
+  IF p_match_key NOT LIKE (
+    SELECT r.room_code || '|%'
+    FROM public.game_rooms r
+    WHERE r.id = v_room_id
+  ) THEN
+    RAISE EXCEPTION 'Maç anahtarı bu odayla eşleşmiyor.';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM public.player_match_results mr
