@@ -24,7 +24,6 @@ const achievementCatalog = [
   { key: "first_blood_5", category: "firstblood", title: "Bela", description: "5 galibiyete ulaş.", threshold: 5 },
   { key: "first_blood_10", category: "firstblood", title: "BEN10", description: "10 galibiyete ulaş.", threshold: 10 },
   { key: "first_blood_37", category: "firstblood", title: "Yuh Ayı!", description: "37 galibiyete ulaş.", threshold: 37 },
-  { key: "first_blood_41", category: "firstblood", title: "Kere Maşallah", description: "41 galibiyete ulaş.", threshold: 41 },
   { key: "first_blood_62", category: "firstblood", title: "Dersim", description: "62 galibiyete ulaş.", threshold: 62 },
   { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100 },
   { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan." },
