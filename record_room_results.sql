@@ -22,6 +22,7 @@ DECLARE
   v_won boolean;
   v_inserted_profile_id uuid;
   v_winner_text text;
+  v_old_match_key text;
   v_winner integer;
   v_inserted integer := 0;
   v_backfilled integer := 0;
@@ -96,8 +97,8 @@ BEGIN
   -- Aynı odada daha önce yalnızca bir tarafta kalmış maçları tamamla.
   -- Eski match_key biçimi: oda_kodu|kazanan_oyuncu_numarası|tahmin_geçmişi
   IF r.player1_profile_id IS NOT NULL AND r.player2_profile_id IS NOT NULL THEN
-    FOR v_winner_text IN
-      SELECT split_part(m.match_key, '|', 2)
+    FOR v_old_match_key, v_winner_text IN
+      SELECT m.match_key, split_part(m.match_key, '|', 2)
       FROM public.player_match_results m
       WHERE m.profile_id = p_profile_id
         AND m.match_key LIKE r.room_code || '|%'
@@ -116,11 +117,7 @@ BEGIN
       v_inserted_profile_id := NULL;
 
       INSERT INTO public.player_match_results (profile_id, match_key, won, is_draw)
-      SELECT v_profile_id, m.match_key, COALESCE(v_won, false), v_won IS NULL
-      FROM public.player_match_results m
-      WHERE m.profile_id = p_profile_id
-        AND m.match_key LIKE r.room_code || '|%'
-        AND split_part(m.match_key, '|', 2) = v_winner_text
+      VALUES (v_profile_id, v_old_match_key, COALESCE(v_won, false), v_won IS NULL)
       ON CONFLICT (profile_id, match_key) DO NOTHING
       RETURNING profile_id INTO v_inserted_profile_id;
 
