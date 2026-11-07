@@ -166,25 +166,17 @@
             <span id="achievementSummary">0/13 açık</span>
           </div>
           <div class="achievement-categories">
-            <section class="achievement-category">
-              <button type="button" class="achievement-category-toggle" data-achievement-toggle="firstBloodAchievements" aria-expanded="false">
-                <strong>İlk Kan</strong><span id="firstBloodCount">0/7</span>
-              </button>
-              <div id="firstBloodAchievements" class="achievement-list hidden"></div>
-            </section>
-            <section class="achievement-category">
-              <button type="button" class="achievement-category-toggle" data-achievement-toggle="bratAchievements" aria-expanded="false">
-                <strong>BRAT</strong><span id="bratCount">0/5</span>
-              </button>
-              <div id="bratAchievements" class="achievement-list hidden"></div>
-            </section>
-            <section class="achievement-category">
-              <button type="button" class="achievement-category-toggle" data-achievement-toggle="streakAchievements" aria-expanded="false">
-                <strong>Seri</strong><span id="streakCount">0/1</span>
-              </button>
-              <div id="streakAchievements" class="achievement-list hidden"></div>
-            </section>
+            <button type="button" class="achievement-category-toggle" data-achievement-toggle="wAchievements" aria-expanded="false">
+              <strong>W</strong><span id="wAchievementCount">0/8</span>
+              <small>İlk Kan + Seri</small>
+            </button>
+            <button type="button" class="achievement-category-toggle" data-achievement-toggle="slayAchievements" aria-expanded="false">
+              <strong>SLAY</strong><span id="slayAchievementCount">0/5</span>
+              <small>BRAT</small>
+            </button>
           </div>
+          <div id="wAchievements" class="achievement-list hidden"></div>
+          <div id="slayAchievements" class="achievement-list hidden"></div>
           <p id="achievementStatus" class="achievement-status"></p>
         </section>
 
