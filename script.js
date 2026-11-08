@@ -419,7 +419,29 @@ async function copyRecoveryCode() {
 
 /* Maç sonucunu sunucuya bir kez kaydeder; iki oyuncu için ayrı profil kaydı tutulur. */
 async function recordProfileResult(state) {
-  if (!playerProfile || !playerProfile.synced || !state || state.status !== "finished") return;
+  if (!state || state.status !== "finished") return;
+
+  if (!playerProfile || !playerProfile.synced) {
+    setProfileSyncStatus("Maç bitti ancak oyuncu profili sunucuyla eşitlenmediği için istatistik yazılamadı.", "error");
+    return;
+  }
+
+  // İki profil de oda kaydında bulunmadan sonuç RPC'sini çağırma.
+  // Aksi hâlde sunucu yalnızca tek oyuncunun W/L bilgisini yazabilir.
+  const profile1 = state.player1_profile;
+  const profile2 = state.player2_profile;
+  if (!profile1 || !profile1.id || !profile2 || !profile2.id) {
+    boundProfileRoomKey = "";
+    setProfileSyncStatus("Maç bitti ancak iki oyuncunun profili odaya bağlı görünmüyor. İstatistikler yazılmadı; profil bağlantısı tekrar denenecek.", "error");
+    return;
+  }
+
+  const ownRoomProfile = Number(playerNumber) === 1 ? profile1 : profile2;
+  if (ownRoomProfile.id !== playerProfile.id) {
+    boundProfileRoomKey = "";
+    setProfileSyncStatus("Maç bitti ancak bu oyuncu oturumunun profili oda kaydıyla eşleşmiyor. İstatistikler yazılmadı; bağlantı tekrar denenecek.", "error");
+    return;
+  }
 
   const history = Array.isArray(state.history) ? state.history : [];
   const matchKey = [state.room_code || roomCode, state.winner, JSON.stringify(history)].join("|");
@@ -433,12 +455,9 @@ async function recordProfileResult(state) {
   if (!window.__artiRoomSyncDone) window.__artiRoomSyncDone = new Set();
   window.__artiRecordingMatches.add(matchKey);
 
-  const won = state.winner === null || state.winner === undefined
-    ? null : Number(state.winner) === Number(playerNumber);
+  setProfileSyncStatus("Maç sonucu iki oyuncunun profiline kaydediliyor...", "warning");
 
   try {
-    // Sunucu tek çağrıda iki oyuncunun sonucunu da yazar. Böylece bir
-    // oyuncunun tarayıcısı kapanırsa karşı tarafın galibiyeti kaybolmaz.
     const result = await rpc("record_room_profile_results", {
       p_token: playerToken,
       p_profile_id: playerProfile.id,
@@ -446,8 +465,8 @@ async function recordProfileResult(state) {
       p_match_key: matchKey
     });
 
-    if (result && result.success === false) {
-      throw new Error(result.message || "Maç sonuçları kaydedilemedi.");
+    if (!result || result.success !== true) {
+      throw new Error((result && result.message) || "Sunucu iki oyuncunun sonucunu onaylamadı.");
     }
 
     if (!playerProfile.processedMatches.includes(matchKey)) {
@@ -455,15 +474,17 @@ async function recordProfileResult(state) {
       saveProfile();
     }
     window.__artiRoomSyncDone.add(matchKey);
+
+    await refreshRemoteProfile();
+    setProfileSyncStatus("Maç sonucu sunucuya gönderildi. İki profilin oda bağlantısı doğrulanmıştı.", "success");
   } catch (error) {
     console.error("İki oyuncunun maç sonucu kaydedilemedi:", error);
+    setProfileSyncStatus("Maç sonucu kaydedilemedi: " + error.message + ". Otomatik yeniden denenecek.", "error");
     return;
   } finally {
     window.__artiRecordingMatches.delete(matchKey);
   }
 
-  // Her oyuncu kendi başarım çağrısını yapar; istatistikler ise yukarıdaki
-  // ortak sunucu işlemiyle iki profil için de güvence altına alınır.
   try {
     const achievementResult = await rpc("unlock_match_achievements", {
       p_player_token: playerToken,
@@ -480,7 +501,6 @@ async function recordProfileResult(state) {
     });
   }
 }
-
 function showAchievementToast(item) {
   const toast = $("achievementToast");
   if (!toast || !item) return;
@@ -1353,11 +1373,19 @@ function renderMatchProfiles(state = gameState) {
   paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
   paint(2, p2 || (ownSlot === 2 ? local : null), ownSlot === 2);
 }
+function setProfileSyncStatus(message, type = "warning") {
+  const status = $("profileSyncStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.className = "profile-sync-status" + (type === "success" ? " is-success" : type === "error" ? " is-error" : "");
+}
+
 async function bindCurrentProfileToRoom() {
-  if (!playerToken || !playerProfile || !projectUrl || !apiKey) return;
+  if (!playerToken || !playerProfile || !projectUrl || !apiKey) return false;
   if (profileBindingPromise) return profileBindingPromise;
   const key = roomCode + ":" + playerProfile.id;
-  if (boundProfileRoomKey === key) return;
+  if (boundProfileRoomKey === key) return true;
+
   profileBindingPromise = (async () => {
     try {
       await syncProfileIfNeeded();
@@ -1369,10 +1397,15 @@ async function bindCurrentProfileToRoom() {
       if (bindingResult && bindingResult.success === false) {
         throw new Error(bindingResult.message || "Profil odaya bağlanamadı.");
       }
-      boundProfileRoomKey = key;
       await refreshRemoteProfile();
+      boundProfileRoomKey = key;
+      setProfileSyncStatus("Profil bağlantısı kuruldu; oda kayıtları doğrulanıyor.", "success");
+      return true;
     } catch (error) {
-      console.warn("Profil odaya bağlanamadı:", error);
+      boundProfileRoomKey = "";
+      console.error("Profil odaya bağlanamadı:", error);
+      setProfileSyncStatus("Profil odaya bağlanamadı: " + error.message + ". Yeniden denenecek; maç sonucu henüz kaydedilmedi.", "error");
+      return false;
     } finally {
       profileBindingPromise = null;
     }
