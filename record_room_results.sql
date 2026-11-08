@@ -146,3 +146,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.record_room_profile_results(uuid, uuid, text, text) TO anon, authenticated;
+
+-- PostgREST fonksiyon listesini yenile.
+NOTIFY pgrst, 'reload schema';
