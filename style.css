@@ -544,14 +544,14 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 @media(max-width:520px){.match-profile-stats{gap:7px;font-size:10px;line-height:1.5}.match-profile-streak{font-size:9px}}
 
 
-/* Maç ekranı: renkli W/L rozetleri ve yenilmezlik göstergesi */
-.match-profile-stats{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid #ffffff18}
-.match-stat-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.35px;line-height:1}
-.match-stat-pill strong{font-size:13px;font-weight:900}
-.match-stat-pill.win-stat{color:#72e0ad;background:rgba(48,190,127,.14);border:1px solid rgba(85,217,155,.3)}
-.match-stat-pill.loss-stat{color:#ff8f99;background:rgba(226,77,91,.13);border:1px solid rgba(255,112,125,.28)}
-.match-stat-pill.draw-stat{color:#aebbd3;background:rgba(142,160,190,.12);border:1px solid rgba(174,187,211,.22)}
-.match-profile-streak{display:flex;justify-content:center;align-items:center;gap:5px;margin-top:8px;padding:6px 10px;border-radius:9px;color:#f4c66b;background:rgba(240,189,85,.10);border:1px solid rgba(240,189,85,.22);font-size:11px;font-weight:700;text-align:center;overflow-wrap:anywhere}
-.match-profile-streak strong{font-size:14px;font-weight:900;color:#ffda83}
-.streak-icon{font-size:13px}
-@media(max-width:520px){.match-profile-stats{gap:5px;margin-top:8px;padding-top:8px}.match-stat-pill{gap:4px;padding:5px 7px;font-size:9px}.match-stat-pill strong{font-size:11px}.match-profile-streak{gap:4px;margin-top:6px;padding:5px 7px;font-size:9px}.match-profile-streak strong{font-size:12px}}
+
+
+/* Klasik maç kartı istatistikleri: kupa, kafatası ve ateş satırı */
+.match-profile-stats{display:flex;justify-content:flex-start;align-items:center;gap:16px;margin-top:14px;padding:0;border:0;text-align:left;font-size:16px;line-height:1.35}
+.match-profile-stats span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.match-profile-stats strong{font-size:inherit;font-weight:800;color:#f1f3f8}
+.match-stat-win{color:#f4c65f}
+.match-stat-loss{color:#cbd5e1}
+.match-profile-streak{display:block;margin-top:14px;padding:0;border:0;border-radius:0;background:none;color:#e9bd62;font-size:14px;font-weight:500;line-height:1.4;text-align:left}
+.match-profile-streak strong{color:inherit;font-size:inherit;font-weight:600}
+@media(max-width:520px){.match-profile-stats{gap:14px;margin-top:13px;font-size:15px}.match-profile-streak{margin-top:13px;font-size:13px}}
