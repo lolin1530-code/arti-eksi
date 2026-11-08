@@ -61,9 +61,11 @@
       <div class="match-profiles" id="matchProfiles">
         <article class="match-profile-card">
           <div class="match-profile-name" id="player1ProfileName">Oyuncu 1</div>
+          <div class="match-profile-stats" id="player1ProfileStats">İstatistik yok</div>
         </article>
         <article class="match-profile-card">
           <div class="match-profile-name" id="player2ProfileName">Oyuncu 2 Bekleniyor</div>
+          <div class="match-profile-stats" id="player2ProfileStats">İstatistik yok</div>
         </article>
       </div>
       <div class="panel turn-status-panel hidden" id="turnPanel"><p id="turn"></p></div>
@@ -184,6 +186,19 @@
           </div>
         </div>
 
+        <section class="profile-wl-stats">
+          <h3>Maç İstatistikleri</h3>
+          <div class="profile-wl-grid">
+            <div><span>Galibiyet</span><strong id="profileWins">0</strong></div>
+            <div><span>Mağlubiyet</span><strong id="profileLosses">0</strong></div>
+            <div><span>Beraberlik</span><strong id="profileDraws">0</strong></div>
+            <div><span>Toplam maç</span><strong id="profileTotalMatches">0</strong></div>
+            <div><span>Kazanma oranı</span><strong id="profileWinRate">%0.0</strong></div>
+            <div><span>Yenilmezlik serisi</span><strong id="profileCurrentUnbeaten">0</strong></div>
+            <div><span>En iyi seri</span><strong id="profileBestUnbeaten">0</strong></div>
+          </div>
+          <p class="profile-wl-note">Beraberlik seriyi bozmaz ve artırmaz. Mağlubiyet seriyi sıfırlar.</p>
+        </section>
 
         <section class="achievements-section">
           <div class="achievements-heading">
