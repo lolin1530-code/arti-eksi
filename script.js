@@ -719,7 +719,7 @@ async function refreshAchievements(newKeys = []) {
 }
 
 function renderAchievements() {
-  if (!$("wAchievements")) return;
+  if (!$("slayAchievements")) return;
 
   let unlockedTotal = 0;
 
