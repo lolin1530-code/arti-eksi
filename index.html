@@ -61,13 +61,9 @@
       <div class="match-profiles" id="matchProfiles">
         <article class="match-profile-card">
           <div class="match-profile-name" id="player1ProfileName">Oyuncu 1</div>
-          <div class="match-profile-stats"><span>🏆 <b id="player1ProfileWins">0</b></span><span>☠️ <b id="player1ProfileLosses">0</b></span></div>
-          <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player1ProfileStreak">0</b></div>
         </article>
         <article class="match-profile-card">
           <div class="match-profile-name" id="player2ProfileName">Oyuncu 2 Bekleniyor</div>
-          <div class="match-profile-stats"><span>🏆 <b id="player2ProfileWins">0</b></span><span>☠️ <b id="player2ProfileLosses">0</b></span></div>
-          <div class="match-profile-streak">🔥 Yenilmezlik Serisi: <b id="player2ProfileStreak">0</b></div>
         </article>
       </div>
       <div class="panel turn-status-panel hidden" id="turnPanel"><p id="turn"></p></div>
@@ -188,42 +184,18 @@
           </div>
         </div>
 
-        <div class="profile-stats">
-          <div class="profile-stat win-stat">
-            <span class="profile-stat-label">WIN</span>
-            <strong id="profileWins">0</strong>
-            <span>Galibiyet</span>
-          </div>
-          <div class="profile-stat lose-stat">
-            <span class="profile-stat-label">LOSE</span>
-            <strong id="profileLosses">0</strong>
-            <span>Mağlubiyet</span>
-          </div>
-        </div>
-
-        <div class="profile-rate">
-          <div class="profile-rate-heading"><span>Galibiyet oranı</span><strong id="profileWinRate">%0</strong></div>
-          <div class="profile-rate-track"><div id="profileWinRateBar" class="profile-rate-fill"></div></div>
-        </div>
-
-        <p class="profile-note">İstatistikler profil oluşturulduktan sonra oynanan tamamlanmış maçlardan hesaplanır.</p>
 
         <section class="achievements-section">
           <div class="achievements-heading">
             <h3>Başarımlar</h3>
-            <span id="achievementSummary">0/12 açık</span>
+            <span id="achievementSummary">0/5 açık</span>
           </div>
           <div class="achievement-categories">
-            <button type="button" class="achievement-category-toggle" data-achievement-toggle="wAchievements" aria-expanded="false">
-              <strong>W</strong><span id="wAchievementCount">0/7</span>
-              <small>İlk Kan + Seri</small>
-            </button>
             <button type="button" class="achievement-category-toggle" data-achievement-toggle="slayAchievements" aria-expanded="false">
               <strong>SLAY</strong><span id="slayAchievementCount">0/5</span>
               <small>BRAT</small>
             </button>
           </div>
-          <div id="wAchievements" class="achievement-list hidden"></div>
           <div id="slayAchievements" class="achievement-list hidden"></div>
           <p id="achievementStatus" class="achievement-status"></p>
         </section>
@@ -258,22 +230,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div id="rivalryModal" class="rivalry-modal hidden" role="dialog" aria-modal="true" aria-labelledby="rivalryTitle">
-    <section class="rivalry-card">
-      <button id="closeRivalryBtn" class="profile-close" type="button" aria-label="Kapat">×</button>
-      <div class="rivalry-kicker">BİREBİR REKABET</div>
-      <h2 id="rivalryTitle">Oyuncu vs Oyuncu</h2>
-      <p id="rivalryStatus" class="rivalry-status">İstatistikler yükleniyor...</p>
-      <div class="rivalry-score-grid">
-        <div class="rivalry-score win"><strong id="rivalryMyWins">—</strong><span id="rivalryMyLabel">Senin W</span></div>
-        <div class="rivalry-score draw"><strong id="rivalryDraws">—</strong><span>Beraberlik</span></div>
-        <div class="rivalry-score lose"><strong id="rivalryTheirWins">—</strong><span id="rivalryTheirLabel">Onun W</span></div>
-      </div>
-      <div class="rivalry-total">Toplam karşılaşma: <strong id="rivalryTotal">—</strong></div>
-      <button id="closeRivalryFooterBtn" class="profile-secondary-btn" type="button">Kapat</button>
-    </section>
   </div>
 
   <div id="easterEgg" class="easter-egg hidden" role="dialog" aria-live="polite">
