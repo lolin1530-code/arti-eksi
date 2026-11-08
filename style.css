@@ -539,5 +539,6 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 
 
 /* Eski maç profil kartlarının altında W/L ve yenilmezlik özeti */
-.match-profile-stats{margin-top:8px;padding-top:8px;border-top:1px solid #ffffff18;color:#c5cee0;font-size:11px;line-height:1.6;text-align:center;overflow-wrap:anywhere}
-@media(max-width:520px){.match-profile-stats{font-size:9px;line-height:1.5}}
+.match-profile-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid #ffffff18;color:#c5cee0;font-size:12px;line-height:1.5;text-align:center;overflow-wrap:anywhere}
+.match-profile-streak{margin-top:6px;color:#f0bd55;font-size:11px;text-align:center;overflow-wrap:anywhere}
+@media(max-width:520px){.match-profile-stats{gap:7px;font-size:10px;line-height:1.5}.match-profile-streak{font-size:9px}}
