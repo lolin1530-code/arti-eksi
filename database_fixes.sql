@@ -38,16 +38,34 @@ BEGIN
     WHERE room_id = r.id;
 
     SELECT jsonb_build_object(
-        'id', id, 'username', username,
-        'wins', wins, 'losses', losses, 'streak', streak
+        'id', id,
+        'username', username,
+        'wins', COALESCE(wins, 0),
+        'losses', COALESCE(losses, 0),
+        'draws', COALESCE(draws, 0),
+        'total_matches', COALESCE(total_matches, 0),
+        'streak', COALESCE(streak, 0),
+        'current_unbeaten_streak', COALESCE(current_unbeaten_streak, 0),
+        'best_unbeaten_streak', COALESCE(best_unbeaten_streak, 0),
+        'win_rate', CASE WHEN COALESCE(total_matches, 0) = 0 THEN 0
+                         ELSE ROUND(wins::numeric * 100 / total_matches, 1) END
     )
     INTO v_player1_profile
     FROM public.player_profiles
     WHERE id = r.player1_profile_id;
 
     SELECT jsonb_build_object(
-        'id', id, 'username', username,
-        'wins', wins, 'losses', losses, 'streak', streak
+        'id', id,
+        'username', username,
+        'wins', COALESCE(wins, 0),
+        'losses', COALESCE(losses, 0),
+        'draws', COALESCE(draws, 0),
+        'total_matches', COALESCE(total_matches, 0),
+        'streak', COALESCE(streak, 0),
+        'current_unbeaten_streak', COALESCE(current_unbeaten_streak, 0),
+        'best_unbeaten_streak', COALESCE(best_unbeaten_streak, 0),
+        'win_rate', CASE WHEN COALESCE(total_matches, 0) = 0 THEN 0
+                         ELSE ROUND(wins::numeric * 100 / total_matches, 1) END
     )
     INTO v_player2_profile
     FROM public.player_profiles
@@ -55,6 +73,7 @@ BEGIN
 
     RETURN jsonb_build_object(
         'room_code', r.room_code,
+        'match_id', r.match_id,
         'player', v_player,
         'status', r.game_status,
         'turn', r.current_turn,
@@ -79,6 +98,8 @@ BEGIN
     );
 END;
 $function$;
+
+
 
 CREATE OR REPLACE FUNCTION public.respond_friend_request(
     p_id uuid,
