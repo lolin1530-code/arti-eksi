@@ -1290,7 +1290,9 @@ function renderMatchProfiles(state = gameState) {
   if (opponentHeading) opponentHeading.textContent = currentOpponentName + " adlı oyuncunun tahminleri";
 
   function paint(slot, data, isOwn) {
-    data = data || (isOwn ? local : null);
+    data = data
+      ? (isOwn && local ? { ...data, ...local, ...playerStats } : data)
+      : (isOwn ? local : null);
     const name = $("player" + slot + "ProfileName");
     const stats = $("player" + slot + "ProfileStats");
     if (!name) return;
