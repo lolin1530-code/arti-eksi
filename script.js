@@ -1278,7 +1278,7 @@ function renderMatchProfiles(state = gameState) {
     state.opponent_username || state.opponent_name ||
     (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
   );
-  const local = playerProfile;
+  const local = playerProfile ? { ...playerProfile, ...playerStats } : null;
   if (p1 && p1.id) { fetchRoomProfileTitle(p1.id); fetchRoomProfileAvatar(p1.id); }
   if (p2 && p2.id) { fetchRoomProfileTitle(p2.id); fetchRoomProfileAvatar(p2.id); }
   if (local && local.id && local.equippedTitleKey) roomProfileTitles[local.id] = local.equippedTitleKey;
