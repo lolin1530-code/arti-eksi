@@ -1302,19 +1302,19 @@ function renderMatchProfiles(state = gameState) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
-      if (stats) stats.innerHTML = '<span class="match-stat-pill win-stat">WIN <strong>0</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>0</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>0</strong></span>';
-      if (streak) streak.innerHTML = '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>0</strong>';
+      if (stats) stats.innerHTML = '<span class="match-stat-win">🏆 <strong>0</strong></span><span class="match-stat-loss">☠️ <strong>0</strong></span>';
+      if (streak) streak.innerHTML = '🔥 Yenilmezlik Serisi: <strong>0</strong>';
       return;
     }
     if (stats) {
       stats.innerHTML = data.total_matches !== undefined
-        ? '<span class="match-stat-pill win-stat">WIN <strong>' + (Number(data.wins) || 0) + '</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>' + (Number(data.losses) || 0) + '</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>' + (Number(data.draws) || 0) + '</strong></span>'
-        : '<span class="match-stat-pill win-stat">WIN <strong>—</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>—</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>—</strong></span>';
+        ? '<span class="match-stat-win">🏆 <strong>' + (Number(data.wins) || 0) + '</strong></span><span class="match-stat-loss">☠️ <strong>' + (Number(data.losses) || 0) + '</strong></span>'
+        : '<span class="match-stat-win">🏆 <strong>—</strong></span><span class="match-stat-loss">☠️ <strong>—</strong></span>';
     }
     if (streak) {
       streak.innerHTML = data.total_matches !== undefined
-        ? '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>' + (Number(data.current_unbeaten_streak) || 0) + '</strong>'
-        : '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>—</strong>';
+        ? '🔥 Yenilmezlik Serisi: <strong>' + (Number(data.current_unbeaten_streak) || 0) + '</strong>'
+        : '🔥 Yenilmezlik Serisi: <strong>—</strong>';
     }
 
     const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
