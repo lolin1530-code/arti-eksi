@@ -332,8 +332,8 @@ async function syncProfileIfNeeded() {
       p_id: playerProfile.id,
       p_username: playerProfile.username,
       p_token: playerProfile.token,
-      p_wins: Number(playerProfile.wins) || 0,
-      p_losses: Number(playerProfile.losses) || 0
+      p_wins: 0,
+      p_losses: 0
     });
 
     if (result && result.success === false) {
