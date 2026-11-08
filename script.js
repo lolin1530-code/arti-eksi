@@ -489,6 +489,10 @@ async function processMatchResult(state) {
       if (!$("profileModal").classList.contains("hidden")) await loadFriendData();
       return true;
     } catch (error) {
+      const detail = error && (error.message || error.details || error.hint || error.code)
+        ? [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ")
+        : String(error || "Bilinmeyen sunucu hatası");
+      window.__artiResultSyncError = detail;
       console.error("Maç sonucu kaydedilemedi:", error);
       return false;
     }
@@ -1650,8 +1654,13 @@ async function requestRestart() {
   $("restartBtn").textContent = "İSTATİSTİKLER KAYDEDİLİYOR...";
   try {
     if (playerProfile && playerProfile.synced) {
+      window.__artiResultSyncError = "";
       const saved = await processMatchResult(gameState);
-      if (!saved) throw new Error("Maç istatistikleri henüz kaydedilemedi. Birkaç saniye sonra tekrar dene.");
+      if (!saved) {
+        throw new Error(window.__artiResultSyncError
+          ? "İstatistik kayıt hatası: " + window.__artiResultSyncError
+          : "Maç sonucu kaydedilemedi. Profil bağlantısını ve maç durumunu kontrol et.");
+      }
     }
     $("restartBtn").textContent = "BEKLE...";
     const result = await rpc("request_restart", { p_token: playerToken });
