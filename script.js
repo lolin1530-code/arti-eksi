@@ -462,35 +462,43 @@ async function processMatchResult(state) {
   const matchKey = getMatchKey(state);
   if (!matchKey) return false;
   if (!window.__artiResultSyncDone) window.__artiResultSyncDone = new Set();
-  if (!window.__artiResultSyncing) window.__artiResultSyncing = new Set();
+  if (!window.__artiResultSyncPromises) window.__artiResultSyncPromises = new Map();
   if (window.__artiResultSyncDone.has(matchKey)) return true;
-  if (window.__artiResultSyncing.has(matchKey)) return false;
 
-  window.__artiResultSyncing.add(matchKey);
+  // Polling ve "Tekrar Oyna" aynı anda kayıt başlatırsa ikinci çağrı
+  // başarısız sayılmasın; devam eden kayıt işleminin sonucunu beklesin.
+  const existingPromise = window.__artiResultSyncPromises.get(matchKey);
+  if (existingPromise) return existingPromise;
+
+  const syncPromise = (async () => {
+    try {
+      const result = await rpc("record_room_profile_results", {
+        p_token: playerToken,
+        p_profile_id: playerProfile.id,
+        p_profile_token: playerProfile.token,
+        p_match_key: matchKey
+      });
+      if (result && result.success === false) throw new Error(result.message || "Maç sonucu kaydedilemedi.");
+
+      window.__artiResultSyncDone.add(matchKey);
+      await loadProfileStats();
+
+      if (Number(playerNumber) === 1 && state.player1_profile) state.player1_profile = { ...state.player1_profile, ...playerStats };
+      if (Number(playerNumber) === 2 && state.player2_profile) state.player2_profile = { ...state.player2_profile, ...playerStats };
+      renderMatchProfiles(state);
+      if (!$("profileModal").classList.contains("hidden")) await loadFriendData();
+      return true;
+    } catch (error) {
+      console.error("Maç sonucu kaydedilemedi:", error);
+      return false;
+    }
+  })();
+
+  window.__artiResultSyncPromises.set(matchKey, syncPromise);
   try {
-    const result = await rpc("record_room_profile_results", {
-      p_token: playerToken,
-      p_profile_id: playerProfile.id,
-      p_profile_token: playerProfile.token,
-      p_match_key: matchKey
-    });
-    if (result && result.success === false) throw new Error(result.message || "Maç sonucu kaydedilemedi.");
-
-    window.__artiResultSyncDone.add(matchKey);
-    await loadProfileStats();
-
-    // The room-state payload was fetched just before the result write. Refresh
-    // the local player's card immediately; the opponent's card updates next poll.
-    if (Number(playerNumber) === 1 && state.player1_profile) state.player1_profile = { ...state.player1_profile, ...playerStats };
-    if (Number(playerNumber) === 2 && state.player2_profile) state.player2_profile = { ...state.player2_profile, ...playerStats };
-    renderMatchProfiles(state);
-    if (!$("profileModal").classList.contains("hidden")) await loadFriendData();
-    return true;
-  } catch (error) {
-    console.error("Maç sonucu kaydedilemedi:", error);
-    return false;
+    return await syncPromise;
   } finally {
-    window.__artiResultSyncing.delete(matchKey);
+    window.__artiResultSyncPromises.delete(matchKey);
   }
 }
 
