@@ -43,6 +43,11 @@ const achievementGroups = [
 ];
 
 let friendData = { friends: [], incoming: [], outgoing: [] };
+let playerStats = {
+  wins: 0, losses: 0, draws: 0, total_matches: 0,
+  current_unbeaten_streak: 0, best_unbeaten_streak: 0, win_rate: 0
+};
+let friendStatsById = {};
 let boundProfileRoomKey = "";
 let profileBindingPromise = null;
 let currentOpponentName = "Karşı taraf";
@@ -165,6 +170,7 @@ function showProfileView() {
   $("profileRecoveryArea").classList.add("hidden");
   $("profileViewArea").classList.remove("hidden");
   renderProfile();
+  loadProfileStats();
   refreshAchievements();
   loadEquippedProfileTitle();
   loadProfileAvatar();
@@ -367,6 +373,51 @@ async function refreshRemoteProfile() {
   }
 }
 
+function formatStatsSummary(stats) {
+  const s = stats || {};
+  const wins = Number(s.wins) || 0;
+  const losses = Number(s.losses) || 0;
+  const draws = Number(s.draws) || 0;
+  const current = Number(s.current_unbeaten_streak) || 0;
+  const best = Number(s.best_unbeaten_streak) || 0;
+  return `G: ${wins} · M: ${losses} · B: ${draws} · Yenilmezlik: ${current} · Rekor: ${best}`;
+}
+
+function renderProfileStats() {
+  const s = playerStats || {};
+  const wins = Number(s.wins) || 0;
+  const losses = Number(s.losses) || 0;
+  const draws = Number(s.draws) || 0;
+  const total = Number(s.total_matches) || 0;
+  const rate = total ? (Number.isFinite(Number(s.win_rate)) ? Number(s.win_rate) : wins * 100 / total) : 0;
+  const values = {
+    profileWins: wins,
+    profileLosses: losses,
+    profileDraws: draws,
+    profileTotalMatches: total,
+    profileWinRate: `%${rate.toFixed(1)}`,
+    profileCurrentUnbeaten: Number(s.current_unbeaten_streak) || 0,
+    profileBestUnbeaten: Number(s.best_unbeaten_streak) || 0
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const el = $(id);
+    if (el) el.textContent = String(value);
+  });
+}
+
+async function loadProfileStats() {
+  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
+  try {
+    const result = await rpc("get_public_wl_stats", { p_profile_ids: [playerProfile.id] });
+    const row = Array.isArray(result) ? result[0] : result;
+    if (row) playerStats = { ...playerStats, ...row };
+    renderProfileStats();
+    renderMatchProfiles();
+  } catch (error) {
+    console.warn("Profil istatistikleri yüklenemedi:", error);
+  }
+}
+
 function renderProfile() {
   if (!playerProfile) return;
 
@@ -381,6 +432,7 @@ function renderProfile() {
     ? "Kurtarma kodun sunucuya kaydedildi. Güvenli bir yere kopyala."
     : "Kurtarma kodunun sunucuya kaydedilmesi bekleniyor.";
   renderAchievements();
+  renderProfileStats();
 }
 
 async function copyRecoveryCode() {
@@ -393,6 +445,54 @@ async function copyRecoveryCode() {
   }
 }
 
+function getMatchKey(state) {
+  if (!state || !state.match_id) return "";
+  const history = Array.isArray(state.history) ? state.history : [];
+  return [state.room_code || roomCode, state.match_id, state.winner === null || state.winner === undefined ? "draw" : state.winner, JSON.stringify(history)].join("|");
+}
+
+/* Her tamamlanan turu sunucuda tekil ve idempotent biçimde W/L sistemine kaydeder. */
+async function processMatchResult(state) {
+  if (!state || state.status !== "finished" || !state.match_id || !playerProfile || !playerProfile.synced) return false;
+
+  const ownRoomProfile = Number(playerNumber) === 1 ? state.player1_profile : state.player2_profile;
+  if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) return false;
+
+  const matchKey = getMatchKey(state);
+  if (!matchKey) return false;
+  if (!window.__artiResultSyncDone) window.__artiResultSyncDone = new Set();
+  if (!window.__artiResultSyncing) window.__artiResultSyncing = new Set();
+  if (window.__artiResultSyncDone.has(matchKey)) return true;
+  if (window.__artiResultSyncing.has(matchKey)) return false;
+
+  window.__artiResultSyncing.add(matchKey);
+  try {
+    const result = await rpc("record_room_profile_results", {
+      p_token: playerToken,
+      p_profile_id: playerProfile.id,
+      p_profile_token: playerProfile.token,
+      p_match_key: matchKey
+    });
+    if (result && result.success === false) throw new Error(result.message || "Maç sonucu kaydedilemedi.");
+
+    window.__artiResultSyncDone.add(matchKey);
+    await loadProfileStats();
+
+    // The room-state payload was fetched just before the result write. Refresh
+    // the local player's card immediately; the opponent's card updates next poll.
+    if (Number(playerNumber) === 1 && state.player1_profile) state.player1_profile = { ...state.player1_profile, ...playerStats };
+    if (Number(playerNumber) === 2 && state.player2_profile) state.player2_profile = { ...state.player2_profile, ...playerStats };
+    renderMatchProfiles(state);
+    if (!$("profileModal").classList.contains("hidden")) await loadFriendData();
+    return true;
+  } catch (error) {
+    console.error("Maç sonucu kaydedilemedi:", error);
+    return false;
+  } finally {
+    window.__artiResultSyncing.delete(matchKey);
+  }
+}
+
 /* Maç bazlı BRAT başarımlarını W/L istatistiklerinden bağımsız işler. */
 async function processMatchAchievements(state) {
   if (!state || state.status !== "finished" || !playerProfile || !playerProfile.synced) return;
@@ -402,8 +502,8 @@ async function processMatchAchievements(state) {
     : state.player2_profile;
   if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) return;
 
-  const history = Array.isArray(state.history) ? state.history : [];
-  const matchKey = [state.room_code || roomCode, state.winner, JSON.stringify(history)].join("|");
+  const matchKey = getMatchKey(state);
+  if (!matchKey) return;
   if (!window.__artiAchievementSyncDone) window.__artiAchievementSyncDone = new Set();
   if (!window.__artiAchievementSyncing) window.__artiAchievementSyncing = new Set();
   if (window.__artiAchievementSyncDone.has(matchKey) || window.__artiAchievementSyncing.has(matchKey)) return;
@@ -424,7 +524,7 @@ async function processMatchAchievements(state) {
     window.__artiAchievementSyncing.delete(matchKey);
   }
 }
-function showAchievementToastfunction showAchievementToast(item) {
+function showAchievementToast(item) {
   const toast = $("achievementToast");
   if (!toast || !item) return;
   $("achievementToastIcon").textContent = item.icon || "🏆";
@@ -938,9 +1038,24 @@ async function loadFriendData() {
       outgoing: Array.isArray(result.outgoing) ? result.outgoing : []
     };
 
+    await loadFriendStats();
     renderFriendData();
   } catch (error) {
     $("friendStatus").textContent = error.message;
+  }
+}
+
+async function loadFriendStats() {
+  const ids = friendData.friends.map(getFriendId).filter(id => /^[0-9a-f-]{36}$/i.test(id));
+  friendStatsById = {};
+  if (!ids.length) return;
+  try {
+    const result = await rpc("get_public_wl_stats", { p_profile_ids: ids });
+    (Array.isArray(result) ? result : []).forEach(row => {
+      if (row && row.profile_id) friendStatsById[row.profile_id] = row;
+    });
+  } catch (error) {
+    console.warn("Arkadaş istatistikleri yüklenemedi:", error);
   }
 }
 
@@ -996,9 +1111,10 @@ function renderFriendData() {
   } else {
     friendData.friends.forEach(item => {
       const username = item.username || item.friend_username || "Oyuncu";
+      const friendStats = friendStatsById[getFriendId(item)];
       const card = createFriendCard(
         username,
-        "Arkadaşın",
+        friendStats ? formatStatsSummary(friendStats) : "Maç istatistikleri yükleniyor...",
         null,
         null
       );
@@ -1175,13 +1291,20 @@ function renderMatchProfiles(state = gameState) {
   function paint(slot, data, isOwn) {
     data = data || (isOwn ? local : null);
     const name = $("player" + slot + "ProfileName");
+    const stats = $("player" + slot + "ProfileStats");
     if (!name) return;
 
     if (!data) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
+      if (stats) stats.textContent = "İstatistik yok";
       return;
+    }
+    if (stats) {
+      stats.textContent = data.total_matches !== undefined
+        ? formatStatsSummary(data)
+        : "İstatistikler yükleniyor...";
     }
 
     const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
@@ -1506,8 +1629,13 @@ async function updateRestartStatus() {
 async function requestRestart() {
   if (!gameState || gameState.status !== "finished") return;
   $("restartBtn").disabled = true;
-  $("restartBtn").textContent = "BEKLE...";
+  $("restartBtn").textContent = "İSTATİSTİKLER KAYDEDİLİYOR...";
   try {
+    if (playerProfile && playerProfile.synced) {
+      const saved = await processMatchResult(gameState);
+      if (!saved) throw new Error("Maç istatistikleri henüz kaydedilemedi. Birkaç saniye sonra tekrar dene.");
+    }
+    $("restartBtn").textContent = "BEKLE...";
     const result = await rpc("request_restart", { p_token: playerToken });
     if (result.restarted) {
       $("restartStatus").textContent = "Yeni oyun hazırlanıyor.";
@@ -1567,6 +1695,7 @@ async function refreshState() {
       }
     }
 
+    await processMatchResult(state);
     await processMatchAchievements(state);
 
     const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
