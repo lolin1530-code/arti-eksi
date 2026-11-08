@@ -426,17 +426,18 @@ async function recordProfileResult(state) {
     return;
   }
 
-  // İki profil de oda kaydında bulunmadan sonuç RPC'sini çağırma.
-  // Aksi hâlde sunucu yalnızca tek oyuncunun W/L bilgisini yazabilir.
+  // Kendi profilimizin odaya bağlı olması yeterli.
+  // Sunucu, karşı tarafın profili varsa onun sonucunu da aynı işlemde kaydeder.
+  // Karşı taraf profilsizse bu kontrol kendi W/L kaydımızı engellememelidir.
   const profile1 = state.player1_profile;
   const profile2 = state.player2_profile;
-  if (!profile1 || !profile1.id || !profile2 || !profile2.id) {
+  const ownRoomProfile = Number(playerNumber) === 1 ? profile1 : profile2;
+  if (!ownRoomProfile || !ownRoomProfile.id) {
     boundProfileRoomKey = "";
-    setProfileSyncStatus("Maç bitti ancak iki oyuncunun profili odaya bağlı görünmüyor. İstatistikler yazılmadı; profil bağlantısı tekrar denenecek.", "error");
+    setProfileSyncStatus("Maç bitti ancak kendi profilin odaya bağlı görünmüyor. Profil bağlantısı tekrar denenecek.", "error");
     return;
   }
 
-  const ownRoomProfile = Number(playerNumber) === 1 ? profile1 : profile2;
   if (ownRoomProfile.id !== playerProfile.id) {
     boundProfileRoomKey = "";
     setProfileSyncStatus("Maç bitti ancak bu oyuncu oturumunun profili oda kaydıyla eşleşmiyor. İstatistikler yazılmadı; bağlantı tekrar denenecek.", "error");
@@ -473,10 +474,11 @@ async function recordProfileResult(state) {
       playerProfile.processedMatches.push(matchKey);
       saveProfile();
     }
-    window.__artiRoomSyncDone.add(matchKey);
-
+    // Başarılı kayıt sonrası profil yenilemesi de tamamlanmadan işi bitti sayma.
+    // Yenileme başarısız olursa sonraki polling turu güvenle tekrar deneyebilir.
     await refreshRemoteProfile();
-    setProfileSyncStatus("Maç sonucu sunucuya gönderildi. İki profilin oda bağlantısı doğrulanmıştı.", "success");
+    window.__artiRoomSyncDone.add(matchKey);
+    setProfileSyncStatus("Maç sonucu sunucuya gönderildi.", "success");
   } catch (error) {
     console.error("İki oyuncunun maç sonucu kaydedilemedi:", error);
     setProfileSyncStatus("Maç sonucu kaydedilemedi: " + error.message + ". Otomatik yeniden denenecek.", "error");
