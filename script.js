@@ -31,22 +31,14 @@ let avatarIsEraser = false;
 let avatarUndoStack = [];
 
 const achievementCatalog = [
-  { key: "first_blood_1", category: "firstblood", title: "İlk Kan", description: "1 galibiyete ulaş.", threshold: 1, icon: "🩸" },
-  { key: "first_blood_5", category: "firstblood", title: "Bela", description: "5 galibiyete ulaş.", threshold: 5, icon: "😈" },
-  { key: "first_blood_10", category: "firstblood", title: "BEN10", description: "10 galibiyete ulaş.", threshold: 10, icon: "👽" },
-  { key: "first_blood_37", category: "firstblood", title: "Yuh Ayı!", description: "37 galibiyete ulaş.", threshold: 37, icon: "🐻" },
-  { key: "first_blood_62", category: "firstblood", title: "Dersim", description: "62 galibiyete ulaş.", threshold: 62, icon: "⚡" },
-  { key: "first_blood_100", category: "firstblood", title: "Selam Sana İmparator", description: "100 galibiyete ulaş.", threshold: 100, icon: "👑" },
   { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan.", icon: "💅" },
   { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet.", icon: "🐎" },
   { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan.", icon: "🔥" },
   { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true, icon: "🕯️" },
-  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" },
-  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "5 galibiyetlik yenilmezlik serisine ulaş.", threshold: 5, icon: "🔥" }
+  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" }
 ];
 
 const achievementGroups = [
-  { key: "w", categories: ["firstblood", "streak"], listId: "wAchievements", countId: "wAchievementCount", total: 7 },
   { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 }
 ];
 
@@ -220,9 +212,6 @@ async function createOrUpdateProfile() {
         token,
         recoveryCode,
         username,
-        wins: 0,
-        losses: 0,
-        streak: 0,
         createdAt: Date.now(),
         processedMatches: [],
         synced: true,
@@ -371,9 +360,6 @@ async function refreshRemoteProfile() {
     const profile = Array.isArray(result) ? result[0] : result;
     if (profile) {
       playerProfile.username = profile.username || playerProfile.username;
-      playerProfile.wins = Number(profile.wins) || 0;
-      playerProfile.losses = Number(profile.losses) || 0;
-      playerProfile.streak = Number(profile.streak) || 0;
       saveProfile();
       renderMatchProfiles();
       if (!$("profileModal").classList.contains("hidden")) renderProfile();
@@ -384,22 +370,12 @@ async function refreshRemoteProfile() {
 function renderProfile() {
   if (!playerProfile) return;
 
-  const wins = Number(playerProfile.wins) || 0;
-  const losses = Number(playerProfile.losses) || 0;
-  const total = wins + losses;
-  const winRate = total > 0 ? (wins / total) * 100 : 0;
-
   const equippedTitle = achievementCatalog.find(item => item.key === playerProfile.equippedTitleKey);
   renderProfileAvatar(playerProfile.avatarData || "");
   paintProfileName($("profileDisplayName"), playerProfile.username, equippedTitle ? equippedTitle.key : "");
   const titleLine = $("profileEquippedTitle");
   if (titleLine) titleLine.textContent = "";
   $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
-  $("profileWins").textContent = wins;
-  $("profileLosses").textContent = losses;
-  if ($("profileStreak")) $("profileStreak").textContent = Number(playerProfile.streak) || 0;
-  $("profileWinRate").textContent = "%" + winRate.toFixed(1).replace(".", ",");
-  $("profileWinRateBar").style.width = winRate + "%";
   $("recoveryCodeDisplay").textContent = playerProfile.recoveryCode || "Kurtarma kodu bulunamadı";
   $("recoveryCodeStatus").textContent = playerProfile.recoverySaved
     ? "Kurtarma kodun sunucuya kaydedildi. Güvenli bir yere kopyala."
@@ -417,93 +393,38 @@ async function copyRecoveryCode() {
   }
 }
 
-/* Maç sonucunu sunucuya bir kez kaydeder; iki oyuncu için ayrı profil kaydı tutulur. */
-async function recordProfileResult(state) {
-  if (!state || state.status !== "finished") return;
+/* Maç bazlı BRAT başarımlarını W/L istatistiklerinden bağımsız işler. */
+async function processMatchAchievements(state) {
+  if (!state || state.status !== "finished" || !playerProfile || !playerProfile.synced) return;
 
-  if (!playerProfile || !playerProfile.synced) {
-    setProfileSyncStatus("Maç bitti ancak oyuncu profili sunucuyla eşitlenmediği için istatistik yazılamadı.", "error");
-    return;
-  }
-
-  // Kendi profilimizin odaya bağlı olması yeterli.
-  // Sunucu, karşı tarafın profili varsa onun sonucunu da aynı işlemde kaydeder.
-  // Karşı taraf profilsizse bu kontrol kendi W/L kaydımızı engellememelidir.
-  const profile1 = state.player1_profile;
-  const profile2 = state.player2_profile;
-  const ownRoomProfile = Number(playerNumber) === 1 ? profile1 : profile2;
-  if (!ownRoomProfile || !ownRoomProfile.id) {
-    boundProfileRoomKey = "";
-    setProfileSyncStatus("Maç bitti ancak kendi profilin odaya bağlı görünmüyor. Profil bağlantısı tekrar denenecek.", "error");
-    return;
-  }
-
-  if (ownRoomProfile.id !== playerProfile.id) {
-    boundProfileRoomKey = "";
-    setProfileSyncStatus("Maç bitti ancak bu oyuncu oturumunun profili oda kaydıyla eşleşmiyor. İstatistikler yazılmadı; bağlantı tekrar denenecek.", "error");
-    return;
-  }
+  const ownRoomProfile = Number(playerNumber) === 1
+    ? state.player1_profile
+    : state.player2_profile;
+  if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) return;
 
   const history = Array.isArray(state.history) ? state.history : [];
   const matchKey = [state.room_code || roomCode, state.winner, JSON.stringify(history)].join("|");
+  if (!window.__artiAchievementSyncDone) window.__artiAchievementSyncDone = new Set();
+  if (!window.__artiAchievementSyncing) window.__artiAchievementSyncing = new Set();
+  if (window.__artiAchievementSyncDone.has(matchKey) || window.__artiAchievementSyncing.has(matchKey)) return;
 
-  playerProfile.processedMatches = Array.isArray(playerProfile.processedMatches)
-    ? playerProfile.processedMatches : [];
-
-  if (window.__artiRoomSyncDone && window.__artiRoomSyncDone.has(matchKey)) return;
-  if (window.__artiRecordingMatches && window.__artiRecordingMatches.has(matchKey)) return;
-  if (!window.__artiRecordingMatches) window.__artiRecordingMatches = new Set();
-  if (!window.__artiRoomSyncDone) window.__artiRoomSyncDone = new Set();
-  window.__artiRecordingMatches.add(matchKey);
-
-  setProfileSyncStatus("Maç sonucu iki oyuncunun profiline kaydediliyor...", "warning");
-
+  window.__artiAchievementSyncing.add(matchKey);
   try {
-    const result = await rpc("record_room_profile_results", {
-      p_token: playerToken,
-      p_profile_id: playerProfile.id,
-      p_profile_token: playerProfile.token,
-      p_match_key: matchKey
-    });
-
-    if (!result || result.success !== true) {
-      throw new Error((result && result.message) || "Sunucu iki oyuncunun sonucunu onaylamadı.");
-    }
-
-    if (!playerProfile.processedMatches.includes(matchKey)) {
-      playerProfile.processedMatches.push(matchKey);
-      saveProfile();
-    }
-    // Başarılı kayıt sonrası profil yenilemesi de tamamlanmadan işi bitti sayma.
-    // Yenileme başarısız olursa sonraki polling turu güvenle tekrar deneyebilir.
-    await refreshRemoteProfile();
-    window.__artiRoomSyncDone.add(matchKey);
-    setProfileSyncStatus("Maç sonucu sunucuya gönderildi.", "success");
-  } catch (error) {
-    console.error("İki oyuncunun maç sonucu kaydedilemedi:", error);
-    setProfileSyncStatus("Maç sonucu kaydedilemedi: " + error.message + ". Otomatik yeniden denenecek.", "error");
-    return;
-  } finally {
-    window.__artiRecordingMatches.delete(matchKey);
-  }
-
-  try {
-    const achievementResult = await rpc("unlock_match_achievements", {
+    const result = await rpc("unlock_match_achievements", {
       p_player_token: playerToken,
       p_profile_id: playerProfile.id,
       p_profile_token: playerProfile.token,
       p_match_key: matchKey
     });
-    await refreshRemoteProfile();
-    await refreshAchievements(achievementResult && achievementResult.unlocked ? achievementResult.unlocked : []);
+    await refreshAchievements(result && result.unlocked ? result.unlocked : []);
+    window.__artiAchievementSyncDone.add(matchKey);
   } catch (error) {
     console.error("Maç başarımları kaydedilemedi:", error);
-    await refreshRemoteProfile().catch(profileError => {
-      console.error("Profil güncellenemedi:", profileError);
-    });
+  } finally {
+    window.__artiAchievementSyncing.delete(matchKey);
   }
 }
-function showAchievementToast(item) {
+function showAchievementToastfunction showAchievementToast(item) {
   const toast = $("achievementToast");
   if (!toast || !item) return;
   $("achievementToastIcon").textContent = item.icon || "🏆";
@@ -800,18 +721,6 @@ async function refreshAchievements(newKeys = []) {
 function renderAchievements() {
   if (!$("wAchievements")) return;
 
-  const wins = Number(playerProfile && playerProfile.wins) || 0;
-  const streak = Number(playerProfile && playerProfile.streak) || 0;
-
-  // W başarımları profilin sunucudaki toplam galibiyet/seri bilgisiyle de
-  // doğrulanır. Böylece başarım RPC'si bir maçta başarısız olsa bile,
-  // kazanılmış İlk Kan/Bela gibi kalıcı kilometre taşları kilitli görünmez.
-  const winMilestones = achievementCatalog.filter(item =>
-    item.category === "firstblood" && wins >= item.threshold
-  );
-  winMilestones.forEach(item => playerAchievements.add(item.key));
-  if (streak >= 5) playerAchievements.add("streak_5");
-
   let unlockedTotal = 0;
 
   achievementGroups.forEach(group => {
@@ -850,10 +759,6 @@ function renderAchievements() {
         progress.textContent = "Gizli Başarım";
       } else if (unlocked) {
         progress.textContent = "AÇILDI";
-      } else if (item.category === "firstblood") {
-        progress.textContent = "Galibiyet: " + Math.min(wins, item.threshold) + "/" + item.threshold;
-      } else if (item.key === "streak_5") {
-        progress.textContent = "Seri: " + Math.min(streak, 5) + "/5";
       } else {
         progress.textContent = "Kilitli";
       }
@@ -917,7 +822,7 @@ async function searchPlayer() {
       );
       const card = createFriendCard(
         item.username,
-        `Galibiyet: ${Number(item.wins) || 0} · Mağlubiyet: ${Number(item.losses) || 0}`,
+        "Oyuncu profili",
         alreadyFriend ? "Arkadaşsınız" : requestSent ? "İstek gönderildi" : "İstek Gönder",
         alreadyFriend || requestSent ? null : () => sendFriendRequest(item.id)
       );
@@ -1034,79 +939,9 @@ async function loadFriendData() {
     };
 
     renderFriendData();
-    await refreshFriendStats();
   } catch (error) {
     $("friendStatus").textContent = error.message;
   }
-}
-
-async function refreshFriendStats() {
-  if (!playerProfile || !playerProfile.synced || !Array.isArray(friendData.friends)) return;
-  const updates = friendData.friends.map(async item => {
-    const id = getFriendId(item);
-    if (!id) return;
-    try {
-      const result = await rpc("get_player_profile", { p_id: id });
-      const profile = Array.isArray(result) ? result[0] : result;
-      if (!profile) return;
-      item.username = profile.username || item.username || item.friend_username;
-      item.wins = Number(profile.wins) || 0;
-      item.losses = Number(profile.losses) || 0;
-      item.streak = Number(profile.streak) || 0;
-    } catch (error) {
-      console.warn("Arkadaş istatistiği yenilenemedi:", error);
-    }
-  });
-  await Promise.all(updates);
-  renderFriendData();
-}
-
-async function openRivalry(friend) {
-  const friendId = getFriendId(friend);
-  if (!friendId) {
-    $("friendStatus").textContent = "Arkadaş profil kimliği alınamadı.";
-    return;
-  }
-
-  const friendName = friend.username || friend.friend_username || "Arkadaşın";
-  $("rivalryTitle").textContent = (playerProfile.username || "Sen") + " VS " + friendName;
-  $("rivalryStatus").textContent = "İstatistikler yükleniyor...";
-  $("rivalryMyWins").textContent = "—";
-  $("rivalryTheirWins").textContent = "—";
-  $("rivalryDraws").textContent = "—";
-  $("rivalryTotal").textContent = "—";
-  $("rivalryMyLabel").textContent = (playerProfile.username || "Sen") + " W";
-  $("rivalryTheirLabel").textContent = friendName + " W";
-  $("rivalryModal").classList.remove("hidden");
-
-  try {
-    const result = await rpc("get_rivalry_stats", {
-      p_id: playerProfile.id,
-      p_token: playerProfile.token,
-      p_opponent_id: friendId
-    });
-    const stats = Array.isArray(result) ? result[0] : result;
-    if (!stats || stats.success === false) {
-      throw new Error((stats && stats.message) || "Rekabet istatistikleri alınamadı.");
-    }
-    const myWins = Number(stats.my_wins ?? stats.wins ?? 0) || 0;
-    const theirWins = Number(stats.opponent_wins ?? stats.their_wins ?? stats.losses ?? 0) || 0;
-    const draws = Number(stats.draws) || 0;
-    const total = Number(stats.total ?? (myWins + theirWins + draws)) || 0;
-    $("rivalryMyWins").textContent = myWins;
-    $("rivalryTheirWins").textContent = theirWins;
-    $("rivalryDraws").textContent = draws;
-    $("rivalryTotal").textContent = total;
-    $("rivalryStatus").textContent = total
-      ? "Geçmişteki bütün ortak maçlarınız hesaba katılıyor."
-      : "Henüz kayıtlı bir karşılaşmanız bulunmuyor.";
-  } catch (error) {
-    $("rivalryStatus").textContent = error.message;
-  }
-}
-
-function closeRivalry() {
-  $("rivalryModal").classList.add("hidden");
 }
 
 function renderFriendData() {
@@ -1161,17 +996,12 @@ function renderFriendData() {
   } else {
     friendData.friends.forEach(item => {
       const username = item.username || item.friend_username || "Oyuncu";
-      const wins = Number(item.wins) || 0;
-      const losses = Number(item.losses) || 0;
-      const total = wins + losses;
-      const rate = total ? ((wins / total) * 100).toFixed(1).replace(".", ",") : "0";
       const card = createFriendCard(
         username,
-        `Galibiyet: ${wins} · Mağlubiyet: ${losses} · Başarı: %${rate}`,
-        "Rekabeti Gör",
-        () => openRivalry(item)
+        "Arkadaşın",
+        null,
+        null
       );
-      card.classList.add("friend-card-with-rivalry");
       friends.appendChild(card);
     });
   }
@@ -1345,18 +1175,12 @@ function renderMatchProfiles(state = gameState) {
   function paint(slot, data, isOwn) {
     data = data || (isOwn ? local : null);
     const name = $("player" + slot + "ProfileName");
-    const wins = $("player" + slot + "ProfileWins");
-    const losses = $("player" + slot + "ProfileLosses");
-    const streak = $("player" + slot + "ProfileStreak");
     if (!name) return;
 
     if (!data) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
-      if (wins) wins.textContent = "—";
-      if (losses) losses.textContent = "—";
-      if (streak) streak.textContent = "—";
       return;
     }
 
@@ -1367,9 +1191,6 @@ function renderMatchProfiles(state = gameState) {
       ? roomProfileAvatars[data.id]
       : (isOwn && local ? local.avatarData : "");
     paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), titleKey, avatarData);
-    if (wins) wins.textContent = Number(data.wins) || 0;
-    if (losses) losses.textContent = Number(data.losses) || 0;
-    if (streak) streak.textContent = Number(data.streak) || 0;
   }
 
   paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
@@ -1746,7 +1567,7 @@ async function refreshState() {
       }
     }
 
-    await recordProfileResult(state);
+    await processMatchAchievements(state);
 
     const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
     const previousWasMyTurn = previousWasActive && Number(previousState.turn) === Number(playerNumber);
@@ -2119,12 +1940,6 @@ function initializeGame() {
     $("avatarEraserBtn").classList.remove("active");
     document.querySelectorAll(".avatar-color").forEach(item => item.classList.remove("active"));
   });
-  $("closeRivalryBtn").addEventListener("click", closeRivalry);
-  $("closeRivalryFooterBtn").addEventListener("click", closeRivalry);
-  $("rivalryModal").addEventListener("click", event => {
-    if (event.target === $("rivalryModal")) closeRivalry();
-  });
-
   $("profileUsername").addEventListener("keydown", event => {
     if (event.key === "Enter") createOrUpdateProfile();
   });
@@ -2154,8 +1969,7 @@ function initializeGame() {
     if (event.target === $("profileModal")) closeProfile();
   });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !$("rivalryModal").classList.contains("hidden")) closeRivalry();
-    else if (event.key === "Escape" && !$("profileModal").classList.contains("hidden")) closeProfile();
+    if (event.key === "Escape" && !$("profileModal").classList.contains("hidden")) closeProfile();
   });
 
   document.querySelectorAll(".color-choice").forEach(button => {
