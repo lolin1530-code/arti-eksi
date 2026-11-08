@@ -526,3 +526,16 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 .profile-sync-status:empty{display:none}
 .profile-sync-status.is-success{border-color:#326e56;background:#192b25;color:#8ee0b4}
 .profile-sync-status.is-error{border-color:#8a3f4a;background:#321f27;color:#ff9ca7}
+
+
+/* Baştan kurulan W/L ve yenilmezlik istatistikleri */
+.profile-wl-stats{margin:20px 0;padding:17px;border:1px solid #3b455d;border-radius:14px;background:#20283b}
+.profile-wl-stats h3{margin:0 0 13px;font-size:16px}
+.profile-wl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.profile-wl-grid>div{display:flex;flex-direction:column;gap:7px;min-width:0;padding:12px 9px;border:1px solid #ffffff14;border-radius:10px;background:#171e2d;text-align:center}
+.profile-wl-grid span{color:#aebbd2;font-size:10px;line-height:1.3}
+.profile-wl-grid strong{color:#f5f7ff;font-size:23px;line-height:1.1;overflow-wrap:anywhere}
+.profile-wl-note{margin:12px 0 0;color:#8998b5;font-size:10px;line-height:1.5}
+.match-profile-stats{display:flex;flex-wrap:wrap;gap:5px 8px;color:#c5cee0;font-size:10px;line-height:1.5}
+.friend-card-stats{overflow-wrap:anywhere}
+@media(max-width:600px){.profile-wl-stats{padding:13px 10px}.profile-wl-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.profile-wl-grid>div{padding:10px 6px}.profile-wl-grid strong{font-size:21px}.match-profile-stats{font-size:9px;gap:3px 6px}}
