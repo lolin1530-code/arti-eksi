@@ -272,7 +272,6 @@ button:active { transform: scale(.98); }
 .match-profiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
 .match-profile-card{min-width:0;padding:15px;border:1px solid #465575;border-radius:13px;background:linear-gradient(145deg,#252f49,#1b2030)}
 .match-profile-name{min-height:24px;margin-bottom:11px;color:#fff;font-size:16px;font-weight:900;overflow-wrap:anywhere}
-.match-profile-stats b{color:#fff}
 .match-profile-streak{margin-top:11px;color:#f0bd55;font-size:12px;overflow-wrap:anywhere}
 .own-secret-inline{margin:-4px 0 13px;padding:10px;border:1px solid #526dff55;border-radius:10px;background:#202943}
 .own-secret-label{color:#aebcff;font-size:12px;font-weight:bold}
