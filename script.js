@@ -354,6 +354,7 @@ async function syncProfileIfNeeded() {
   }
 
   await refreshRemoteProfile();
+  await loadProfileStats();
   // Profil ilk kez eşitlendikten sonra başarımları da mutlaka sunucudan çek.
   await refreshAchievements();
 }
