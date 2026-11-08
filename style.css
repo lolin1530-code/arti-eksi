@@ -555,3 +555,60 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 .match-profile-streak{display:block;margin-top:14px;padding:0;border:0;border-radius:0;background:none;color:#e9bd62;font-size:14px;font-weight:500;line-height:1.4;text-align:left}
 .match-profile-streak strong{color:inherit;font-size:inherit;font-weight:600}
 @media(max-width:520px){.match-profile-stats{gap:14px;margin-top:13px;font-size:15px}.match-profile-streak{margin-top:13px;font-size:13px}}
+
+
+/* Maç kartı: ikonlu galibiyet / mağlubiyet göstergeleri */
+.match-profile-stats{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:18px;
+  margin-top:12px;
+  padding:0;
+  border:0;
+  text-align:left;
+  font-size:16px;
+  line-height:1;
+}
+.match-profile-stats span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+}
+.match-profile-stats .match-stat-icon{
+  width:20px;
+  height:20px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  flex:none;
+}
+.match-profile-stats .match-stat-win{color:#f2c45f}
+.match-profile-stats .match-stat-loss{color:#ff737e}
+.match-profile-stats strong{
+  color:#f4f6fb;
+  font-size:16px;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.match-profile-streak{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:11px;
+  color:#f0bd55;
+  font-size:12px;
+  line-height:1.35;
+  text-align:left;
+}
+.match-profile-streak strong{color:#fff0c2;font-size:13px;font-weight:800}
+@media(max-width:520px){
+  .match-profile-stats{gap:13px;margin-top:11px}
+  .match-profile-stats .match-stat-icon{width:18px;height:18px}
+  .match-profile-stats strong{font-size:15px}
+  .match-profile-streak{font-size:10px;margin-top:9px}
+  .match-profile-streak strong{font-size:12px}
+}
