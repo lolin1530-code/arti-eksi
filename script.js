@@ -1302,13 +1302,13 @@ function renderMatchProfiles(state = gameState) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
-      if (stats) stats.innerHTML = '<span class="match-stat-win">🏆 <strong>0</strong></span><span class="match-stat-loss">☠️ <strong>0</strong></span>';
+      if (stats) stats.innerHTML = '<span class="match-stat-win" title="Galibiyet"><svg class="match-stat-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5v2a4 4 0 0 0 4 4M16 6h3v2a4 4 0 0 1-4 4M12 12v5m-4 3h8m-7-3h6"/></svg><strong>0</strong></span><span class="match-stat-loss" title="Mağlubiyet"><svg class="match-stat-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a8 8 0 0 0-8 8v3a2 2 0 0 0 2 2h1l1 3h8l1-3h1a2 2 0 0 0 2-2v-3a8 8 0 0 0-8-8Z"/><path d="M9 10h.01M15 10h.01M9 14h6"/></svg><strong>0</strong></span>';
       if (streak) streak.innerHTML = '🔥 Yenilmezlik Serisi: <strong>0</strong>';
       return;
     }
     if (stats) {
       stats.innerHTML = data.total_matches !== undefined
-        ? '<span class="match-stat-win">🏆 <strong>' + (Number(data.wins) || 0) + '</strong></span><span class="match-stat-loss">☠️ <strong>' + (Number(data.losses) || 0) + '</strong></span>'
+        ? '<span class="match-stat-win" title="Galibiyet"><svg class="match-stat-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5v2a4 4 0 0 0 4 4M16 6h3v2a4 4 0 0 1-4 4M12 12v5m-4 3h8m-7-3h6"/></svg><strong>' + (Number(data.wins) || 0) + '</strong></span><span class="match-stat-loss" title="Mağlubiyet"><svg class="match-stat-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a8 8 0 0 0-8 8v3a2 2 0 0 0 2 2h1l1 3h8l1-3h1a2 2 0 0 0 2-2v-3a8 8 0 0 0-8-8Z"/><path d="M9 10h.01M15 10h.01M9 14h6"/></svg><strong>' + (Number(data.losses) || 0) + '</strong></span>'
         : '<span class="match-stat-win">🏆 <strong>—</strong></span><span class="match-stat-loss">☠️ <strong>—</strong></span>';
     }
     if (streak) {
