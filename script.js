@@ -1295,19 +1295,26 @@ function renderMatchProfiles(state = gameState) {
       : (isOwn ? local : null);
     const name = $("player" + slot + "ProfileName");
     const stats = $("player" + slot + "ProfileStats");
+    const streak = $("player" + slot + "ProfileStreak");
     if (!name) return;
 
     if (!data) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
-      if (stats) stats.textContent = "İstatistik yok";
+      if (stats) stats.textContent = "WIN: 0 · LOSE: 0";
+      if (streak) streak.textContent = "Yenilmezlik serisi: 0";
       return;
     }
     if (stats) {
       stats.textContent = data.total_matches !== undefined
-        ? formatStatsSummary(data)
-        : "İstatistikler yükleniyor...";
+        ? "WIN: " + (Number(data.wins) || 0) + " · LOSE: " + (Number(data.losses) || 0)
+        : "WIN: — · LOSE: —";
+    }
+    if (streak) {
+      streak.textContent = data.total_matches !== undefined
+        ? "Yenilmezlik serisi: " + (Number(data.current_unbeaten_streak) || 0)
+        : "Yenilmezlik serisi: —";
     }
 
     const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
