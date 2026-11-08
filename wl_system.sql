@@ -146,6 +146,20 @@ BEGIN
 END;
 $function$;
 
+-- 3.5) Eski W/L temizliği bu tabloyu kaldırmış olabilir; yeni sistem için yeniden kur.
+CREATE TABLE IF NOT EXISTS public.player_match_results (
+  id bigserial PRIMARY KEY,
+  profile_id uuid NOT NULL REFERENCES public.player_profiles(id) ON DELETE CASCADE,
+  match_key text NOT NULL,
+  won boolean NOT NULL DEFAULT false,
+  is_draw boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT player_match_results_profile_match_key UNIQUE (profile_id, match_key)
+);
+
+CREATE INDEX IF NOT EXISTS player_match_results_profile_created_idx
+  ON public.player_match_results(profile_id, created_at, match_key);
+
 -- 4) Maç sonucunu iki oyuncu için tek transaction'da ve yalnızca bir kez kaydet.
 CREATE OR REPLACE FUNCTION public.record_room_profile_results(
   p_token uuid,
