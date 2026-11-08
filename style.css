@@ -272,14 +272,13 @@ button:active { transform: scale(.98); }
 .match-profiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
 .match-profile-card{min-width:0;padding:15px;border:1px solid #465575;border-radius:13px;background:linear-gradient(145deg,#252f49,#1b2030)}
 .match-profile-name{min-height:24px;margin-bottom:11px;color:#fff;font-size:16px;font-weight:900;overflow-wrap:anywhere}
-.match-profile-stats{display:flex;flex-wrap:wrap;gap:13px;color:#c5cee0;font-size:13px}
 .match-profile-stats b{color:#fff}
 .match-profile-streak{margin-top:11px;color:#f0bd55;font-size:12px;overflow-wrap:anywhere}
 .own-secret-inline{margin:-4px 0 13px;padding:10px;border:1px solid #526dff55;border-radius:10px;background:#202943}
 .own-secret-label{color:#aebcff;font-size:12px;font-weight:bold}
 .own-secret-inline .secret-display{margin:7px 0 0}
 .own-secret-inline .secret-display span{padding:8px 4px}
-@media(max-width:520px){.match-profiles{gap:8px}.match-profile-card{padding:11px 9px}.match-profile-name{font-size:14px}.match-profile-stats{gap:8px;font-size:11px}.match-profile-streak{font-size:10px}.player-columns{grid-template-columns:1fr 1fr;gap:8px}.player-columns .panel{padding:11px 8px}.player-columns h2{font-size:14px}}
+@media(max-width:520px){.match-profiles{gap:8px}.match-profile-card{padding:11px 9px}.match-profile-name{font-size:14px}.match-profile-streak{font-size:10px}.player-columns{grid-template-columns:1fr 1fr;gap:8px}.player-columns .panel{padding:11px 8px}.player-columns h2{font-size:14px}}
 
 
 /* Başarım sistemi */
@@ -536,6 +535,5 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 .profile-wl-grid span{color:#aebbd2;font-size:10px;line-height:1.3}
 .profile-wl-grid strong{color:#f5f7ff;font-size:23px;line-height:1.1;overflow-wrap:anywhere}
 .profile-wl-note{margin:12px 0 0;color:#8998b5;font-size:10px;line-height:1.5}
-.match-profile-stats{display:flex;flex-wrap:wrap;gap:5px 8px;color:#c5cee0;font-size:10px;line-height:1.5}
 .friend-card-stats{overflow-wrap:anywhere}
-@media(max-width:600px){.profile-wl-stats{padding:13px 10px}.profile-wl-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.profile-wl-grid>div{padding:10px 6px}.profile-wl-grid strong{font-size:21px}.match-profile-stats{font-size:9px;gap:3px 6px}}
+@media(max-width:600px){.profile-wl-stats{padding:13px 10px}.profile-wl-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.profile-wl-grid>div{padding:10px 6px}.profile-wl-grid strong{font-size:21px}}
