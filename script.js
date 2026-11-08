@@ -1302,19 +1302,19 @@ function renderMatchProfiles(state = gameState) {
       name.textContent = isOwn
         ? (local && local.username ? local.username : "Profil Bağlanmadı")
         : ((slot === 1 ? cached.player1?.username : cached.player2?.username) || opponentName || "Oyuncu " + slot);
-      if (stats) stats.textContent = "WIN: 0 · LOSE: 0";
-      if (streak) streak.textContent = "Yenilmezlik serisi: 0";
+      if (stats) stats.innerHTML = '<span class="match-stat-pill win-stat">WIN <strong>0</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>0</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>0</strong></span>';
+      if (streak) streak.innerHTML = '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>0</strong>';
       return;
     }
     if (stats) {
-      stats.textContent = data.total_matches !== undefined
-        ? "WIN: " + (Number(data.wins) || 0) + " · LOSE: " + (Number(data.losses) || 0)
-        : "WIN: — · LOSE: —";
+      stats.innerHTML = data.total_matches !== undefined
+        ? '<span class="match-stat-pill win-stat">WIN <strong>' + (Number(data.wins) || 0) + '</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>' + (Number(data.losses) || 0) + '</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>' + (Number(data.draws) || 0) + '</strong></span>'
+        : '<span class="match-stat-pill win-stat">WIN <strong>—</strong></span><span class="match-stat-pill loss-stat">LOSE <strong>—</strong></span><span class="match-stat-pill draw-stat">DRAW <strong>—</strong></span>';
     }
     if (streak) {
-      streak.textContent = data.total_matches !== undefined
-        ? "Yenilmezlik serisi: " + (Number(data.current_unbeaten_streak) || 0)
-        : "Yenilmezlik serisi: —";
+      streak.innerHTML = data.total_matches !== undefined
+        ? '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>' + (Number(data.current_unbeaten_streak) || 0) + '</strong>'
+        : '<span class="streak-icon">🔥</span> Yenilmezlik serisi <strong>—</strong>';
     }
 
     const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
