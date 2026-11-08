@@ -521,8 +521,8 @@ body{background:radial-gradient(ellipse at 50% -18%,#26345b 0%,#151a2a 42%,#0d11
 @media (max-width:560px) { .avatar-editor-panel { grid-template-columns:1fr; } #avatarCanvas { margin:0 auto; } }
 
 
-/* Profil ve maç sonucu eşitleme durumu */
-.profile-sync-status{margin:10px 0 0;padding:9px 11px;border:1px solid #806a35;border-radius:9px;background:#2a251b;color:#f0d68b;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+/* Profil ve maç sonucu eşitlemesi arka planda çalışır; durum metni gösterilmez. */
+.profile-sync-status{display:none!important}
 .profile-sync-status:empty{display:none}
 .profile-sync-status.is-success{border-color:#326e56;background:#192b25;color:#8ee0b4}
 .profile-sync-status.is-error{border-color:#8a3f4a;background:#321f27;color:#ff9ca7}
