@@ -1104,6 +1104,30 @@ function setProfileSyncStatus(message, type = "warning") {
   status.className = "profile-sync-status" + (type === "success" ? " is-success" : type === "error" ? " is-error" : "");
 }
 
+async function refreshProfileCredentialsFromRecovery() {
+  if (!playerProfile || !playerProfile.id || !playerProfile.username || !playerProfile.recoveryCode) {
+    throw new Error("Profilin kurtarma bilgileri eksik. Mevcut profil güvenli şekilde doğrulanamıyor.");
+  }
+
+  const result = await rpc("recover_player_profile", {
+    p_username: playerProfile.username,
+    p_recovery_code: String(playerProfile.recoveryCode).trim().toUpperCase()
+  });
+
+  if (!result || !result.success || !result.token || result.id !== playerProfile.id) {
+    throw new Error((result && result.message) || "Kurtarma kodu mevcut profili doğrulayamadı. Profil bilgilerine dokunulmadı.");
+  }
+
+  // Sunucunun kurtarma RPC'sinden dönen geçerli token'ı aynı profile geri yaz.
+  // Profil ID'si ve kullanıcı adı değişmez; yeni hesap oluşturulmaz.
+  playerProfile.token = result.token;
+  playerProfile.username = result.username || playerProfile.username;
+  playerProfile.synced = true;
+  playerProfile.recoverySaved = true;
+  saveProfile();
+  return true;
+}
+
 async function bindCurrentProfileToRoom() {
   if (!playerToken || !playerProfile || !projectUrl || !apiKey) return false;
   if (profileBindingPromise) return profileBindingPromise;
@@ -1112,18 +1136,41 @@ async function bindCurrentProfileToRoom() {
 
   profileBindingPromise = (async () => {
     try {
-      await syncProfileIfNeeded();
-      const bindingResult = await rpc("bind_room_profile", {
-        p_player_token: playerToken,
-        p_profile_id: playerProfile.id,
-        p_profile_token: playerProfile.token
-      });
+      try {
+        await syncProfileIfNeeded();
+      } catch (syncError) {
+        if (!String(syncError && syncError.message || syncError).includes("Profil doğrulanamadı")) {
+          throw syncError;
+        }
+        await refreshProfileCredentialsFromRecovery();
+        await syncProfileIfNeeded();
+      }
+
+      let bindingResult;
+      try {
+        bindingResult = await rpc("bind_room_profile", {
+          p_player_token: playerToken,
+          p_profile_id: playerProfile.id,
+          p_profile_token: playerProfile.token
+        });
+      } catch (bindingError) {
+        if (!String(bindingError && bindingError.message || bindingError).includes("Profil doğrulanamadı")) {
+          throw bindingError;
+        }
+        // Yerel token sunucudaki hash ile uyuşmuyorsa kurtarma koduyla
+        // mevcut hesabın yeni token'ını al ve aynı oda bağlantısını tekrar dene.
+        await refreshProfileCredentialsFromRecovery();
+        bindingResult = await rpc("bind_room_profile", {
+          p_player_token: playerToken,
+          p_profile_id: playerProfile.id,
+          p_profile_token: playerProfile.token
+        });
+      }
+
       if (bindingResult && bindingResult.success === false) {
         throw new Error(bindingResult.message || "Profil odaya bağlanamadı.");
       }
 
-      // RPC başarılı dönse bile profilin gerçekten doğru oyuncu slotuna
-      // yazıldığını sunucudan tekrar okuyarak doğrula.
       const verifiedState = await rpc("get_game_state", { p_token: playerToken });
       const verifiedPlayer = Number(verifiedState.player);
       const verifiedOwnProfile = verifiedPlayer === 1
@@ -1143,7 +1190,7 @@ async function bindCurrentProfileToRoom() {
       boundProfileRoomKey = "";
       window.__artiResultSyncError = error && error.message ? error.message : String(error);
       console.error("Profil odaya bağlanamadı:", error);
-      setProfileSyncStatus("Profil odaya bağlanamadı: " + error.message + ". Yeniden denenecek; maç sonucu henüz kaydedilmedi.", "error");
+      setProfileSyncStatus("Profil odaya bağlanamadı: " + (error.message || error) + ". Maç sonucu henüz kaydedilmedi.", "error");
       return false;
     } finally {
       profileBindingPromise = null;
