@@ -17,11 +17,6 @@ let turnAudioContext = null;
 let previousTurnKey = "";
 
 let playerProfile = null;
-let playerAchievements = new Set();
-let achievementToastQueue = [];
-let achievementToastActive = false;
-let roomProfileTitles = {};
-let roomProfileTitleFetches = new Set();
 let roomProfileAvatars = {};
 let roomProfileAvatarFetches = new Set();
 let avatarCanvasContext = null;
@@ -29,20 +24,6 @@ let avatarDrawing = false;
 let avatarBrushColor = "#171923";
 let avatarIsEraser = false;
 let avatarUndoStack = [];
-
-const achievementCatalog = [
-  { key: "brat_one_guess", category: "brat", title: "BRAT", description: "Tek tahminde maçı kazan.", icon: "💅" },
-  { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet.", icon: "🐎" },
-  { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan.", icon: "🔥" },
-  { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true, icon: "🕯️" },
-  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" },
-  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "Arka arkaya 5 maç kazan.", icon: "🔥" }
-];
-
-const achievementGroups = [
-  { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 },
-  { key: "streak", categories: ["streak"], listId: "streakAchievements", countId: "streakAchievementCount", total: 1 }
-];
 
 let friendData = { friends: [], incoming: [], outgoing: [] };
 let playerStats = {
@@ -173,8 +154,6 @@ function showProfileView() {
   $("profileViewArea").classList.remove("hidden");
   renderProfile();
   loadProfileStats();
-  refreshAchievements();
-  loadEquippedProfileTitle();
   loadProfileAvatar();
 }
 
@@ -357,8 +336,6 @@ async function syncProfileIfNeeded() {
 
   await refreshRemoteProfile();
   await loadProfileStats();
-  // Profil ilk kez eşitlendikten sonra başarımları da mutlaka sunucudan çek.
-  await refreshAchievements();
 }
 
 async function refreshRemoteProfile() {
@@ -424,17 +401,13 @@ async function loadProfileStats() {
 function renderProfile() {
   if (!playerProfile) return;
 
-  const equippedTitle = achievementCatalog.find(item => item.key === playerProfile.equippedTitleKey);
   renderProfileAvatar(playerProfile.avatarData || "");
-  paintProfileName($("profileDisplayName"), playerProfile.username, equippedTitle ? equippedTitle.key : "");
-  const titleLine = $("profileEquippedTitle");
-  if (titleLine) titleLine.textContent = "";
+  paintProfileName($("profileDisplayName"), playerProfile.username, playerProfile.avatarData || "");
   $("profileAvatarLetter").textContent = playerProfile.username.charAt(0).toLocaleUpperCase("tr-TR");
   $("recoveryCodeDisplay").textContent = playerProfile.recoveryCode || "Kurtarma kodu bulunamadı";
   $("recoveryCodeStatus").textContent = playerProfile.recoverySaved
     ? "Kurtarma kodun sunucuya kaydedildi. Güvenli bir yere kopyala."
     : "Kurtarma kodunun sunucuya kaydedilmesi bekleniyor.";
-  renderAchievements();
   renderProfileStats();
 }
 
@@ -508,123 +481,6 @@ async function processMatchResult(state) {
   }
 }
 
-/* Maç bazlı BRAT başarımlarını W/L istatistiklerinden bağımsız işler. */
-async function processMatchAchievements(state) {
-  if (!state || state.status !== "finished" || !playerProfile || !playerProfile.synced) return;
-
-  const ownRoomProfile = Number(playerNumber) === 1
-    ? state.player1_profile
-    : state.player2_profile;
-  if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) return;
-
-  const matchKey = getMatchKey(state);
-  if (!matchKey) return;
-  if (!window.__artiAchievementSyncDone) window.__artiAchievementSyncDone = new Set();
-  if (!window.__artiAchievementSyncing) window.__artiAchievementSyncing = new Set();
-  if (window.__artiAchievementSyncDone.has(matchKey) || window.__artiAchievementSyncing.has(matchKey)) return;
-
-  window.__artiAchievementSyncing.add(matchKey);
-  try {
-    const result = await rpc("unlock_match_achievements", {
-      p_player_token: playerToken,
-      p_profile_id: playerProfile.id,
-      p_profile_token: playerProfile.token,
-      p_match_key: matchKey
-    });
-    await refreshAchievements(result && result.unlocked ? result.unlocked : []);
-    window.__artiAchievementSyncDone.add(matchKey);
-  } catch (error) {
-    console.error("Maç başarımları kaydedilemedi:", error);
-  } finally {
-    window.__artiAchievementSyncing.delete(matchKey);
-  }
-}
-function showAchievementToast(item) {
-  const toast = $("achievementToast");
-  if (!toast || !item) return;
-  $("achievementToastIcon").textContent = item.icon || "🏆";
-  $("achievementToastTitle").textContent = item.title;
-  $("achievementToastDescription").textContent = item.description || "Yeni bir başarım açtın.";
-  toast.classList.remove("hidden", "toast-out");
-  void toast.offsetWidth;
-  setTimeout(() => {
-    toast.classList.add("toast-out");
-    setTimeout(() => {
-      toast.classList.add("hidden");
-      toast.classList.remove("toast-out");
-      achievementToastActive = false;
-      showNextAchievementToast();
-    }, 320);
-  }, 3600);
-}
-function showNextAchievementToast() {
-  if (achievementToastActive || !achievementToastQueue.length) return;
-  achievementToastActive = true;
-  showAchievementToast(achievementToastQueue.shift());
-}
-function queueAchievementToasts(keys) {
-  achievementCatalog.filter(item => keys.includes(item.key)).forEach(item => achievementToastQueue.push(item));
-  showNextAchievementToast();
-}
-async function equipAchievementTitle(key) {
-  const status = $("achievementStatus");
-  if (!playerProfile || !playerProfile.synced) {
-    status.textContent = "Unvan seçmek için önce profilini sunucuya eşitle.";
-    return;
-  }
-  if (key && !playerAchievements.has(key)) {
-    status.textContent = "Bu başarım hesabında kazanılmış görünmüyor. Başarımları yenile.";
-    return;
-  }
-  status.textContent = "Unvan kaydediliyor...";
-  try {
-    const result = await rpc("set_profile_title", {
-      p_profile_id: playerProfile.id,
-      p_profile_token: playerProfile.token,
-      p_achievement_key: key || null
-    });
-    const row = Array.isArray(result) ? result[0] : result;
-    if (result && result.success === false) throw new Error(result.message || "Unvan kaydedilemedi.");
-    if (row && row.success === false) throw new Error(row.message || "Unvan kaydedilemedi.");
-    playerProfile.equippedTitleKey = key || "";
-    roomProfileTitles[playerProfile.id] = key || "";
-    saveProfile();
-    renderProfile();
-    renderMatchProfiles();
-    status.textContent = key ? "Unvanın kullanıcı adının yanına eklendi." : "Unvanın kaldırıldı.";
-  } catch (error) {
-    status.textContent = "Unvan kaydedilemedi: " + error.message;
-  }
-}
-async function loadEquippedProfileTitle() {
-  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
-  try {
-    const result = await rpc("get_profile_title", { p_profile_id: playerProfile.id });
-    const row = Array.isArray(result) ? result[0] : result;
-    playerProfile.equippedTitleKey = row && row.equipped_title_key ? row.equipped_title_key : "";
-    roomProfileTitles[playerProfile.id] = playerProfile.equippedTitleKey;
-    saveProfile();
-    renderProfile();
-    renderMatchProfiles();
-  } catch (error) {
-    $("achievementStatus").textContent = "Takılı unvan yüklenemedi: " + error.message;
-  }
-}
-async function fetchRoomProfileTitle(profileId) {
-  if (!profileId || roomProfileTitles[profileId] !== undefined || roomProfileTitleFetches.has(profileId)) return;
-  roomProfileTitleFetches.add(profileId);
-  try {
-    const result = await rpc("get_profile_title", { p_profile_id: profileId });
-    const row = Array.isArray(result) ? result[0] : result;
-    roomProfileTitles[profileId] = row && row.equipped_title_key ? row.equipped_title_key : "";
-  } catch (error) {
-    roomProfileTitles[profileId] = "";
-    console.warn("Oyuncu unvanı alınamadı:", error);
-  } finally {
-    roomProfileTitleFetches.delete(profileId);
-    if (gameState) renderMatchProfiles();
-  }
-}
 function renderProfileAvatar(data) {
   const image = $("profileAvatarImage");
   const letter = $("profileAvatarLetter");
@@ -785,7 +641,7 @@ async function saveAvatarDrawing() {
   }
 }
 
-function paintProfileName(element, username, titleKey, avatarData) {
+function paintProfileName(element, username, avatarData) {
   if (!element) return;
   element.innerHTML = "";
   if (avatarData) {
@@ -799,107 +655,6 @@ function paintProfileName(element, username, titleKey, avatarData) {
   name.className = "match-player-username";
   name.textContent = username || "Oyuncu";
   element.appendChild(name);
-  const title = achievementCatalog.find(item => item.key === titleKey);
-  if (title) {
-    const badge = document.createElement("span");
-    badge.className = "achievement-title-badge";
-    badge.textContent = (title.icon || "✦") + " " + title.title;
-    element.appendChild(badge);
-  }
-}
-
-async function refreshAchievements(newKeys = []) {
-  if (!playerProfile || !playerProfile.synced || !projectUrl || !apiKey) return;
-  try {
-    const result = await rpc("get_player_achievements", { p_id: playerProfile.id });
-    const rows = Array.isArray(result) ? result : (result ? [result] : []);
-    playerAchievements = new Set(rows.map(item => item.achievement_key).filter(Boolean));
-    renderAchievements();
-
-    const newlyUnlocked = Array.isArray(newKeys) ? newKeys : [];
-    if (newlyUnlocked.length) {
-      queueAchievementToasts(newlyUnlocked);
-      const names = achievementCatalog
-        .filter(item => newlyUnlocked.includes(item.key))
-        .map(item => item.title);
-      if (names.length) {
-        $("achievementStatus").textContent = "Yeni başarım" + (names.length > 1 ? "lar" : "") + " açıldı: " + names.join(", ");
-        $("achievementStatus").classList.add("achievement-unlock-message");
-      }
-    }
-  } catch (error) {
-    const status = $("achievementStatus");
-    if (status) status.textContent = "Başarımlar yüklenemedi: " + error.message;
-  }
-}
-
-function renderAchievements() {
-  if (!$("slayAchievements") || !$("streakAchievements")) return;
-
-  let unlockedTotal = 0;
-
-  achievementGroups.forEach(group => {
-    const container = $(group.listId);
-    if (!container) return;
-    container.innerHTML = "";
-
-    const items = achievementCatalog.filter(item => group.categories.includes(item.category));
-    const unlockedCount = items.filter(item => playerAchievements.has(item.key)).length;
-    unlockedTotal += unlockedCount;
-
-    const count = $(group.countId);
-    if (count) count.textContent = unlockedCount + "/" + group.total;
-
-    items.forEach(item => {
-      const unlocked = playerAchievements.has(item.key);
-      const hiddenLocked = item.hidden && !unlocked;
-      const card = document.createElement("div");
-      card.className = "achievement-item " + (unlocked ? "unlocked" : "locked") + (hiddenLocked ? " hidden-achievement" : "");
-
-      const icon = document.createElement("div");
-      icon.className = "achievement-icon";
-      icon.textContent = unlocked ? (item.icon || "🔓") : "🔒";
-
-      const body = document.createElement("div");
-      body.className = "achievement-item-body";
-
-      const title = document.createElement("strong");
-      title.textContent = hiddenLocked ? "???" : item.title;
-
-      const description = document.createElement("span");
-      description.textContent = hiddenLocked ? "???" : item.description;
-
-      const progress = document.createElement("small");
-      if (hiddenLocked) {
-        progress.textContent = "Gizli Başarım";
-      } else if (unlocked) {
-        progress.textContent = "AÇILDI";
-      } else {
-        progress.textContent = "Kilitli";
-      }
-
-      body.append(title, description, progress);
-      card.append(icon, body);
-
-      if (unlocked && !hiddenLocked) {
-        const equipButton = document.createElement("button");
-        const equipped = playerProfile && playerProfile.equippedTitleKey === item.key;
-        equipButton.type = "button";
-        equipButton.className = "achievement-equip-btn" + (equipped ? " equipped" : "");
-        equipButton.textContent = equipped ? "Takılı ✓" : "Unvan Yap";
-        equipButton.addEventListener("click", event => {
-          event.preventDefault();
-          event.stopPropagation();
-          equipAchievementTitle(equipped ? "" : item.key);
-        });
-        card.appendChild(equipButton);
-      }
-      container.appendChild(card);
-    });
-  });
-
-  const summary = $("achievementSummary");
-  if (summary) summary.textContent = unlockedTotal + "/" + achievementCatalog.length + " açık";
 }
 
 /* Arkadaş arama ve istekler */
@@ -1293,9 +1048,8 @@ function renderMatchProfiles(state = gameState) {
     (Number(playerNumber) === 1 ? state.player2_username : state.player1_username)
   );
   const local = playerProfile ? { ...playerProfile, ...playerStats } : null;
-  if (p1 && p1.id) { fetchRoomProfileTitle(p1.id); fetchRoomProfileAvatar(p1.id); }
-  if (p2 && p2.id) { fetchRoomProfileTitle(p2.id); fetchRoomProfileAvatar(p2.id); }
-  if (local && local.id && local.equippedTitleKey) roomProfileTitles[local.id] = local.equippedTitleKey;
+  if (p1 && p1.id) fetchRoomProfileAvatar(p1.id);
+  if (p2 && p2.id) fetchRoomProfileAvatar(p2.id);
   currentOpponentName = (Number(playerNumber) === 1 ? p2 : p1)?.username ||
     opponentName ||
     (Number(playerNumber) === 1 ? "Oyuncu 2" : "Oyuncu 1");
@@ -1331,13 +1085,10 @@ function renderMatchProfiles(state = gameState) {
         : '🔥 Yenilmezlik Serisi: <strong>—</strong>';
     }
 
-    const titleKey = (data.id && roomProfileTitles[data.id] !== undefined)
-      ? roomProfileTitles[data.id]
-      : (isOwn && local ? local.equippedTitleKey : data.equipped_title_key);
     const avatarData = data.id && roomProfileAvatars[data.id] !== undefined
       ? roomProfileAvatars[data.id]
       : (isOwn && local ? local.avatarData : "");
-    paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), titleKey, avatarData);
+    paintProfileName(name, data.username || (isOwn ? "Sen" : (opponentName || "Oyuncu " + slot)), avatarData);
   }
 
   paint(1, p1 || (ownSlot === 1 ? local : null), ownSlot === 1);
@@ -1725,7 +1476,6 @@ async function refreshState() {
     }
 
     await processMatchResult(state);
-    await processMatchAchievements(state);
 
     const previousWasActive = previousState && ["playing", "last_chance"].includes(previousState.status);
     const previousWasMyTurn = previousWasActive && Number(previousState.turn) === Number(playerNumber);
@@ -2111,16 +1861,6 @@ function initializeGame() {
   $("friendSearchBtn").addEventListener("click", searchPlayer);
   $("friendSearchInput").addEventListener("keydown", event => {
     if (event.key === "Enter") searchPlayer();
-  });
-
-  document.querySelectorAll(".achievement-category-toggle").forEach(button => {
-    button.addEventListener("click", () => {
-      const list = $(button.dataset.achievementToggle);
-      if (!list) return;
-      const willOpen = list.classList.contains("hidden");
-      list.classList.toggle("hidden", !willOpen);
-      button.setAttribute("aria-expanded", String(willOpen));
-    });
   });
 
   $("profileModal").addEventListener("click", event => {
