@@ -432,7 +432,10 @@ async function processMatchResult(state) {
   if (!state || state.status !== "finished" || !state.match_id || !playerProfile || !playerProfile.synced) return false;
 
   const ownRoomProfile = Number(playerNumber) === 1 ? state.player1_profile : state.player2_profile;
-  if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) return false;
+  if (!ownRoomProfile || ownRoomProfile.id !== playerProfile.id) {
+    window.__artiResultSyncError = "Profilin bu maçın oyuncu slotuna bağlı görünmüyor. Profil-oda eşleştirmesi doğrulanamadı.";
+    return false;
+  }
 
   const matchKey = getMatchKey(state);
   if (!matchKey) return false;
@@ -1118,6 +1121,20 @@ async function bindCurrentProfileToRoom() {
       if (bindingResult && bindingResult.success === false) {
         throw new Error(bindingResult.message || "Profil odaya bağlanamadı.");
       }
+
+      // RPC başarılı dönse bile profilin gerçekten doğru oyuncu slotuna
+      // yazıldığını sunucudan tekrar okuyarak doğrula.
+      const verifiedState = await rpc("get_game_state", { p_token: playerToken });
+      const verifiedPlayer = Number(verifiedState.player);
+      const verifiedOwnProfile = verifiedPlayer === 1
+        ? verifiedState.player1_profile
+        : verifiedPlayer === 2
+          ? verifiedState.player2_profile
+          : null;
+      if (!verifiedOwnProfile || verifiedOwnProfile.id !== playerProfile.id) {
+        throw new Error("Profil oda kaydına bağlanamadı. Profil eşleştirmesi sunucuda doğrulanamadı.");
+      }
+
       await refreshRemoteProfile();
       boundProfileRoomKey = key;
       setProfileSyncStatus("Profil bağlantısı kuruldu; oda kayıtları doğrulanıyor.", "success");
@@ -1404,11 +1421,31 @@ async function updateRestartStatus() {
 async function requestRestart() {
   if (!gameState || gameState.status !== "finished") return;
   $("restartBtn").disabled = true;
-  $("restartBtn").textContent = "İSTATİSTİKLER KAYDEDİLİYOR...";
+  $("restartBtn").textContent = "PROFİL VE İSTATİSTİKLER DOĞRULANIYOR...";
   try {
     if (playerProfile && playerProfile.synced) {
       window.__artiResultSyncError = "";
-      const saved = await processMatchResult(gameState);
+
+      // Eski ekrandaki gameState yerine sunucudan son durumu al.
+      // Önce profilin bu oyuncu oturumuna bağlandığını doğrula.
+      const bound = await bindCurrentProfileToRoom();
+      if (!bound) {
+        throw new Error("Profil odaya bağlanamadı: " +
+          (window.__artiResultSyncError || "Profil eşleştirmesini kontrol et."));
+      }
+
+      const latestState = await rpc("get_game_state", { p_token: playerToken });
+      if (latestState.status !== "finished") {
+        throw new Error("Sunucudaki maç henüz tamamlanmış görünmüyor. Oyunu yenileyip tekrar dene.");
+      }
+      gameState = latestState;
+      if (latestState.player !== undefined && latestState.player !== null) {
+        playerNumber = Number(latestState.player);
+        saveSession();
+      }
+      renderMatchProfiles(latestState);
+
+      const saved = await processMatchResult(latestState);
       if (!saved) {
         throw new Error(window.__artiResultSyncError
           ? "İstatistik kayıt hatası: " + window.__artiResultSyncError
