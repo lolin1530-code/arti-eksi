@@ -1141,6 +1141,7 @@ async function bindCurrentProfileToRoom() {
       return true;
     } catch (error) {
       boundProfileRoomKey = "";
+      window.__artiResultSyncError = error && error.message ? error.message : String(error);
       console.error("Profil odaya bağlanamadı:", error);
       setProfileSyncStatus("Profil odaya bağlanamadı: " + error.message + ". Yeniden denenecek; maç sonucu henüz kaydedilmedi.", "error");
       return false;
@@ -1425,6 +1426,9 @@ async function requestRestart() {
   try {
     if (playerProfile && playerProfile.synced) {
       window.__artiResultSyncError = "";
+
+      // Önceki oturumdan kalan "bağlı" işaretine güvenme; sunucuya yeniden yaz.
+      boundProfileRoomKey = "";
 
       // Eski ekrandaki gameState yerine sunucudan son durumu al.
       // Önce profilin bu oyuncu oturumuna bağlandığını doğrula.
