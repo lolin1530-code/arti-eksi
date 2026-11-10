@@ -35,11 +35,13 @@ const achievementCatalog = [
   { key: "brat_hizli_kosan_atin", category: "brat", title: "Hızlı Koşan Atın...", description: "Kendi tahminlerinden birinde -4 alıp maçı kaybet.", icon: "🐎" },
   { key: "brat_got_tutustu", category: "brat", title: "Göt Tutuştu", description: "Karşı taraf -4 almışken maçı kazan.", icon: "🔥" },
   { key: "hidden_tarikat_cokuyor", category: "brat", title: "Tarikat Çöküyor", description: "Rakibin gizli sayısı 8041 iken maçı kazan.", hidden: true, icon: "🕯️" },
-  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" }
+  { key: "hidden_kult_lideri", category: "brat", title: "Kült Lideri", description: "Gizli sayın 8041 iken maçı kazan.", hidden: true, icon: "🔮" },
+  { key: "streak_5", category: "streak", title: "Sıradaki Gelsin", description: "Arka arkaya 5 maç kazan.", icon: "🔥" }
 ];
 
 const achievementGroups = [
-  { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 }
+  { key: "slay", categories: ["brat"], listId: "slayAchievements", countId: "slayAchievementCount", total: 5 },
+  { key: "streak", categories: ["streak"], listId: "streakAchievements", countId: "streakAchievementCount", total: 1 }
 ];
 
 let friendData = { friends: [], incoming: [], outgoing: [] };
@@ -832,7 +834,7 @@ async function refreshAchievements(newKeys = []) {
 }
 
 function renderAchievements() {
-  if (!$("slayAchievements")) return;
+  if (!$("slayAchievements") || !$("streakAchievements")) return;
 
   let unlockedTotal = 0;
 
