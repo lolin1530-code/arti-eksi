@@ -305,6 +305,7 @@ button:active { transform: scale(.98); }
 .achievement-item.hidden-achievement .achievement-item-body small{color:#b6a6ef}
 .achievement-status{min-height:15px;margin:10px 0 0;color:#aebcff;font-size:11px;line-height:1.5}
 .achievement-unlock-message{color:#70e3ad;font-weight:700}
+.achievement-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 @media(max-width:600px){.achievements-section{padding:13px 10px}.achievement-categories{gap:8px}.achievement-category-toggle{padding:12px 10px;min-height:84px}.achievement-category-toggle strong{font-size:20px}.achievement-item{gap:8px;padding:10px}.achievement-icon{flex-basis:24px;width:24px;font-size:17px}}
 
 
